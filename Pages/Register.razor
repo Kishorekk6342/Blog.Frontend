@@ -1,44 +1,50 @@
 ﻿@page "/register"
 @inject AuthService Auth
 @inject NavigationManager Nav
+@inject ISnackbar Snackbar
 
+<MudPaper Elevation="8" Class="pa-6" Style="width:420px">
 
-<MudPaper Width="400px" Class="mx-auto pa-6">
-    <MudText Typo="Typo.h5" GutterBottom>Register</MudText>
-
-    <MudTextField @bind-Value="model.UserName"
-                  Label="Username"
-                  Required="true" />
+    <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
+        Create Account
+    </MudText>
 
     <MudTextField @bind-Value="model.Email"
                   Label="Email"
-                  Required="true" />
+                  Variant="Variant.Outlined"
+                  FullWidth />
 
     <MudTextField @bind-Value="model.Password"
                   Label="Password"
+                  Variant="Variant.Outlined"
                   InputType="InputType.Password"
-                  Required="true" />
+                  FullWidth
+                  Class="mt-3" />
 
-    <MudButton Variant="Variant.Filled"
+    <MudButton FullWidth
+               Variant="Variant.Filled"
                Color="Color.Primary"
-               FullWidth
-               OnClick="RegisterUser">
+               Class="mt-5"
+               OnClick="HandleRegister">
         Register
     </MudButton>
 
-    <MudText Color="Color.Error">@message</MudText>
 </MudPaper>
 
 @code {
     RegisterDto model = new();
-    string message = "";
 
-    async Task RegisterUser()
+    async Task HandleRegister()
     {
-        var success = await Auth.Register(model);
-        if (success)
-            Nav.NavigateTo("/login");
-        else
-            message = "Registration failed";
+        var ok = await Auth.Register(model);
+
+        if (!ok)
+        {
+            Snackbar.Add("Registration failed", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Account created successfully", Severity.Success);
+        Nav.NavigateTo("/login");
     }
 }

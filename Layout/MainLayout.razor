@@ -1,18 +1,23 @@
 ﻿@inherits LayoutComponentBase
 
 <MudThemeProvider />
-<MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h6">Blog App</MudText>
+
+    <MudAppBar Elevation="0" Color="Color.Primary">
+        <MudText Typo="Typo.h6" Class="ml-4">Blog App</MudText>
         <MudSpacer />
-        <MudButton Variant="Variant.Text" Href="/login">Login</MudButton>
-        <MudButton Variant="Variant.Text" Href="/register">Register</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">
+            Login
+        </MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/register">
+            Register
+        </MudButton>
     </MudAppBar>
 
-    <MudMainContent Class="pa-6">
+    <MudMainContent Class="d-flex justify-center align-center" Style="min-height:90vh">
         @Body
     </MudMainContent>
+
 </MudLayout>

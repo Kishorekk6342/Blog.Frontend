@@ -1,44 +1,51 @@
 ﻿@page "/login"
 @inject AuthService Auth
 @inject NavigationManager Nav
-@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
-<MudPaper Width="400px" Class="mx-auto pa-6">
-    <MudText Typo="Typo.h5" GutterBottom>Login</MudText>
+<MudPaper Elevation="8" Class="pa-6" Style="width:400px">
+
+    <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
+        Login
+    </MudText>
 
     <MudTextField @bind-Value="model.Email"
                   Label="Email"
-                  Required="true" />
+                  Variant="Variant.Outlined"
+                  FullWidth />
 
     <MudTextField @bind-Value="model.Password"
                   Label="Password"
+                  Variant="Variant.Outlined"
                   InputType="InputType.Password"
-                  Required="true" />
+                  FullWidth
+                  Class="mt-3" />
 
-    <MudButton Variant="Variant.Filled"
+    <MudButton FullWidth
+               Variant="Variant.Filled"
                Color="Color.Primary"
-               FullWidth
-               OnClick="LoginUser">
+               Class="mt-5"
+               OnClick="HandleLogin">
         Login
     </MudButton>
 
-    <MudText Color="Color.Error">@message</MudText>
 </MudPaper>
 
 @code {
     LoginDto model = new();
-    string message = "";
 
-    async Task LoginUser()
+    async Task HandleLogin()
     {
         var token = await Auth.Login(model);
-        if (token == null)
+
+        if (token is null)
         {
-            message = "Invalid credentials";
+            Snackbar.Add("Invalid login credentials", Severity.Error);
             return;
         }
 
-        await JS.InvokeVoidAsync("localStorage.setItem", "token", token);
+        Snackbar.Add("Login successful", Severity.Success);
         Nav.NavigateTo("/");
     }
 }
+    
