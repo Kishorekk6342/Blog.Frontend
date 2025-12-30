@@ -1,0 +1,44 @@
+﻿@page "/login"
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<MudPaper Width="400px" Class="mx-auto pa-6">
+    <MudText Typo="Typo.h5" GutterBottom>Login</MudText>
+
+    <MudTextField @bind-Value="model.Email"
+                  Label="Email"
+                  Required="true" />
+
+    <MudTextField @bind-Value="model.Password"
+                  Label="Password"
+                  InputType="InputType.Password"
+                  Required="true" />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth
+               OnClick="LoginUser">
+        Login
+    </MudButton>
+
+    <MudText Color="Color.Error">@message</MudText>
+</MudPaper>
+
+@code {
+    LoginDto model = new();
+    string message = "";
+
+    async Task LoginUser()
+    {
+        var token = await Auth.Login(model);
+        if (token == null)
+        {
+            message = "Invalid credentials";
+            return;
+        }
+
+        await JS.InvokeVoidAsync("localStorage.setItem", "token", token);
+        Nav.NavigateTo("/");
+    }
+}

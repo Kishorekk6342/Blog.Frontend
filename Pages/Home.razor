@@ -1,0 +1,22 @@
+﻿@page "/"
+@inject Blog.Frontend.Services.PostService PostService
+
+<h3>Public Posts</h3>
+
+@if (message == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p>@message</p>
+}
+
+@code {
+    string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        message = await PostService.GetPublicPosts();
+    }
+}
