@@ -11,15 +11,18 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
 
 
+
 builder.Services.AddScoped(sp =>
     new HttpClient
     {
-        BaseAddress = new Uri("https://localhost:7108/")
+        BaseAddress = new Uri("https://localhost:7200/")
     });
 
-builder.Services.AddScoped<PostService>();
+
+builder.Services.AddScoped<PostService>(); 
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AuthStateService>();
+
 builder.Services.AddMudServices();
 
 

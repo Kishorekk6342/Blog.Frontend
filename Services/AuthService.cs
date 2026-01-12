@@ -12,26 +12,40 @@ namespace Blog.Frontend.Services
             _http = http;
         }
 
-        public async Task<bool> Register(RegisterDto dto)
+        public async Task<string?> Login(LoginDto model)
         {
-            var res = await _http.PostAsJsonAsync("api/Auth/register", dto);
-            return res.IsSuccessStatusCode;
-        }
-
-        public async Task<string?> Login(LoginDto dto)
-        {
-            var res = await _http.PostAsJsonAsync("api/Auth/login", dto);
-
-            if (!res.IsSuccessStatusCode)
+            try
+            {
+                var response = await _http.PostAsJsonAsync("api/auth/login", model);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
+                    return result?.Token;
+                }
                 return null;
-
-            var data = await res.Content.ReadFromJsonAsync<LoginResponse>();
-            return data?.Token;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
-        private class LoginResponse
+        public async Task<bool> Signup(SignupDto model)
         {
-            public string Token { get; set; } = "";
+            try
+            {
+                var response = await _http.PostAsJsonAsync("api/auth/signup", model);
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
+    }
+
+    public class AuthResponse
+    {
+        public string Token { get; set; } = string.Empty;
     }
 }

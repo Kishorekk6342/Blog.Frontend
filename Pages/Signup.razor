@@ -1,46 +1,59 @@
-﻿@page "/register"
+﻿@page "/signup"
+@using Blog.Frontend.Services
+@using Blog.Frontend.Models
 @inject AuthService Auth
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
 <MudPaper Elevation="8" Class="pa-6" Style="width:420px">
-
     <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
         Create Account
     </MudText>
 
+    <MudTextField @bind-Value="model.Username"
+                  Label="Username"
+                  Variant="Variant.Outlined"
+                  Required="true" />
+
     <MudTextField @bind-Value="model.Email"
                   Label="Email"
                   Variant="Variant.Outlined"
-                  FullWidth />
+                  Required="true"
+                  Class="mt-3" />
 
     <MudTextField @bind-Value="model.Password"
                   Label="Password"
                   Variant="Variant.Outlined"
                   InputType="InputType.Password"
-                  FullWidth
-                  Class="mt-3" />
+                  Required="true"
+                  Class="mt-3"
+                  HelperText="Minimum 6 characters" />
 
     <MudButton FullWidth
                Variant="Variant.Filled"
                Color="Color.Primary"
                Class="mt-5"
-               OnClick="HandleRegister">
-        Register
+               OnClick="HandleSignup">
+        Sign Up
     </MudButton>
-
 </MudPaper>
 
 @code {
-    RegisterDto model = new();
+    SignupDto model = new();
 
-    async Task HandleRegister()
+    async Task HandleSignup()
     {
-        var ok = await Auth.Register(model);
+        if (model.Password.Length < 6)
+        {
+            Snackbar.Add("Password must be at least 6 characters", Severity.Error);
+            return;
+        }
+
+        var ok = await Auth.Signup(model);
 
         if (!ok)
         {
-            Snackbar.Add("Registration failed", Severity.Error);
+            Snackbar.Add("Username or Email already exists", Severity.Error);
             return;
         }
 

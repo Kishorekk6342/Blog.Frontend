@@ -1,26 +1,24 @@
 ﻿@page "/login"
+@using Blog.Frontend.Services
 @inject AuthService Auth
+@inject AuthStateService AuthState
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
 <MudPaper Elevation="8" Class="pa-6" Style="width:400px">
-
     <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
         Login
     </MudText>
-
     <MudTextField @bind-Value="model.Email"
                   Label="Email"
                   Variant="Variant.Outlined"
                   FullWidth />
-
     <MudTextField @bind-Value="model.Password"
                   Label="Password"
                   Variant="Variant.Outlined"
                   InputType="InputType.Password"
                   FullWidth
                   Class="mt-3" />
-
     <MudButton FullWidth
                Variant="Variant.Filled"
                Color="Color.Primary"
@@ -28,7 +26,6 @@
                OnClick="HandleLogin">
         Login
     </MudButton>
-
 </MudPaper>
 
 @code {
@@ -37,15 +34,13 @@
     async Task HandleLogin()
     {
         var token = await Auth.Login(model);
-
         if (token is null)
         {
-            Snackbar.Add("Invalid login credentials", Severity.Error);
+            Snackbar.Add("Invalid credentials", Severity.Error);
             return;
         }
-
+        await AuthState.SetToken(token);
         Snackbar.Add("Login successful", Severity.Success);
-        Nav.NavigateTo("/");
+        Nav.NavigateTo("/feed", true);
     }
 }
-    
