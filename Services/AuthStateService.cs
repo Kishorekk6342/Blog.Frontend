@@ -7,30 +7,73 @@ namespace Blog.Frontend.Services
         private const string TokenKey = "authToken";
         private readonly IJSRuntime _js;
 
+        private string? _token;
+        private bool _initialized;
+
+        public event Action? OnChange;
+
         public AuthStateService(IJSRuntime js)
         {
             _js = js;
         }
 
-        public async Task SetToken(string token)
+        // 🔑 Load token from localStorage (on app start)
+        public async Task InitializeAsync()
         {
-            await _js.InvokeVoidAsync("localStorage.setItem", TokenKey, token);
+            if (_initialized)
+                return;
+
+            _token = await _js.InvokeAsync<string?>(
+                "localStorage.getItem",
+                TokenKey
+            );
+
+            _initialized = true;
+            NotifyStateChanged();
+        }
+
+        public bool IsLoggedIn()
+        {
+            return !string.IsNullOrWhiteSpace(_token);
         }
 
         public async Task<string?> GetToken()
         {
-            return await _js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
+            if (!_initialized)
+                await InitializeAsync();
+
+            return _token;
         }
 
-        public async Task<bool> IsLoggedIn()
+        public async Task SetToken(string token)
         {
-            var token = await GetToken();
-            return !string.IsNullOrWhiteSpace(token);
+            _token = token;
+
+            await _js.InvokeVoidAsync(
+                "localStorage.setItem",
+                TokenKey,
+                token
+            );
+
+            NotifyStateChanged();
         }
 
         public async Task Logout()
         {
-            await _js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
+            _token = null;
+
+            await _js.InvokeVoidAsync(
+                "localStorage.removeItem",
+                TokenKey
+            );
+
+            NotifyStateChanged();
+        }
+
+        private void NotifyStateChanged()
+        {
+            OnChange?.Invoke();
         }
     }
 }
+    

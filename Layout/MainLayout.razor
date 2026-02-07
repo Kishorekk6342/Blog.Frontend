@@ -1,49 +1,101 @@
 ﻿@inherits LayoutComponentBase
 @inject AuthStateService AuthState
-@inject NavigationManager Nav
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <MudThemeProvider />
+<MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
 
-    <MudAppBar Elevation="0" Color="Color.Primary">
-        <MudText Typo="Typo.h6" Class="ml-4">Blog App</MudText>
-        <MudSpacer />
-
+    <!-- TOP APP BAR -->
+    <MudAppBar Elevation="1" Color="Color.Primary">
         @if (isLoggedIn)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/feed">Feed</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/write">Write</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/profile">Profile</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="Logout">Logout</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="ToggleDrawer" />
         }
-        else
+
+        <!-- CENTER TITLE WHEN DRAWER CLOSED -->
+        <MudText Typo="Typo.h6"
+                 Align="Align.Center"
+                 Class="flex-grow-1">
+            Blog App
+        </MudText>
+
+        <MudSpacer />
+
+        @if (!isLoggedIn)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">Login</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/signup">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Inherit"
+                       Href="/login">
+                Login
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Secondary"
+                       Class="ml-2"
+                       Href="/signup">
                 Sign Up
             </MudButton>
         }
     </MudAppBar>
 
-    <MudMainContent Class="d-flex justify-center align-center" Style="min-height:90vh">
-        @Body
+    <!-- ICON-ONLY DRAWER -->
+    @if (isLoggedIn)
+    {
+        <MudDrawer @bind-Open="drawerOpen"
+                   Variant="DrawerVariant.Mini"
+                   MiniWidth="56px"
+                   Width="220px"
+                   Elevation="2"
+                   ClipMode="DrawerClipMode.Never">
+
+            <div style="height:100%; display:flex;">
+                <NavMenu DrawerOpen="drawerOpen" />
+            </div>
+
+        </MudDrawer>
+
+    }
+
+    <!-- MAIN CONTENT -->
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+            @Body
+        </MudContainer>
     </MudMainContent>
 
 </MudLayout>
 
 @code {
-    bool isLoggedIn;
+    private bool drawerOpen = false;
+    private bool isLoggedIn;
 
     protected override async Task OnInitializedAsync()
     {
-        isLoggedIn = await AuthState.IsLoggedIn();
+        AuthState.OnChange += HandleAuthChanged;
+        await AuthState.InitializeAsync();
+        isLoggedIn = AuthState.IsLoggedIn();
     }
 
-    async Task Logout()
+    private void HandleAuthChanged()
     {
-        await AuthState.Logout();
-        Nav.NavigateTo("/login", true);
+        isLoggedIn = AuthState.IsLoggedIn();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= HandleAuthChanged;
     }
 }

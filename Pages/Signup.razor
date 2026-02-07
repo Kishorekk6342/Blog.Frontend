@@ -1,63 +1,133 @@
 ﻿@page "/signup"
-@using Blog.Frontend.Services
 @using Blog.Frontend.Models
-@inject AuthService Auth
-@inject NavigationManager Nav
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<MudPaper Elevation="8" Class="pa-6" Style="width:420px">
-    <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
-        Create Account
-    </MudText>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="3">
+        <MudStack Spacing="3">
 
-    <MudTextField @bind-Value="model.Username"
-                  Label="Username"
-                  Variant="Variant.Outlined"
-                  Required="true" />
+            <MudText Typo="Typo.h4" Align="Align.Center" GutterBottom>
+                Create Account
+            </MudText>
 
-    <MudTextField @bind-Value="model.Email"
-                  Label="Email"
-                  Variant="Variant.Outlined"
-                  Required="true"
-                  Class="mt-3" />
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                Sign up to start using Blog App
+            </MudText>
 
-    <MudTextField @bind-Value="model.Password"
-                  Label="Password"
-                  Variant="Variant.Outlined"
-                  InputType="InputType.Password"
-                  Required="true"
-                  Class="mt-3"
-                  HelperText="Minimum 6 characters" />
+            <MudDivider Class="my-2" />
 
-    <MudButton FullWidth
-               Variant="Variant.Filled"
-               Color="Color.Primary"
-               Class="mt-5"
-               OnClick="HandleSignup">
-        Sign Up
-    </MudButton>
-</MudPaper>
+            <!-- Username -->
+            <MudTextField @bind-Value="signupDto.Username"
+                          Label="Username"
+                          Variant="Variant.Outlined"
+                          Required
+                          RequiredError="Username is required" />
+
+            <!-- Email -->
+            <MudTextField @bind-Value="signupDto.Email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Required
+                          RequiredError="Email is required" />
+
+            <!-- Password -->
+            <MudTextField @bind-Value="signupDto.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="@passwordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@passwordIcon"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          Required
+                          RequiredError="Password is required" />
+
+            <!-- Confirm Password -->
+            <MudTextField @bind-Value="confirmPassword"
+                          Label="Confirm Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required
+                          RequiredError="Confirm your password" />
+
+            <!-- Signup Button -->
+            <MudButton FullWidth
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="isLoading"
+                       OnClick="HandleSignup">
+
+                @if (isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate />
+                    <MudText Class="ml-2">Creating account...</MudText>
+                }
+                else
+                {
+                    <MudText>Sign Up</MudText>
+                }
+            </MudButton>
+
+            <!-- Login Redirect -->
+            <MudStack Row="true" Justify="Justify.Center">
+                <MudText Typo="Typo.body2">Already have an account?</MudText>
+                <MudLink Href="/login" Class="ml-1">Sign in</MudLink>
+            </MudStack>
+
+        </MudStack>
+    </MudPaper>
+</MudContainer>
 
 @code {
-    SignupDto model = new();
+    private SignupDto signupDto = new();
+    private string confirmPassword = string.Empty;
 
-    async Task HandleSignup()
+    private bool isLoading;
+    private bool showPassword;
+
+    private InputType passwordInputType =>
+        showPassword ? InputType.Text : InputType.Password;
+
+    private string passwordIcon =>
+        showPassword
+            ? Icons.Material.Filled.Visibility
+            : Icons.Material.Filled.VisibilityOff;
+
+    private void TogglePasswordVisibility()
+        => showPassword = !showPassword;
+
+    private async Task HandleSignup()
     {
-        if (model.Password.Length < 6)
+        if (signupDto.Password != confirmPassword)
         {
-            Snackbar.Add("Password must be at least 6 characters", Severity.Error);
+            Snackbar.Add("Passwords do not match", Severity.Error);
             return;
         }
 
-        var ok = await Auth.Signup(model);
-
-        if (!ok)
+        isLoading = true;
+        try
         {
-            Snackbar.Add("Username or Email already exists", Severity.Error);
-            return;
-        }
+            var errorMessage = await AuthService.Signup(signupDto);
 
-        Snackbar.Add("Account created successfully", Severity.Success);
-        Nav.NavigateTo("/login");
+            if (string.IsNullOrEmpty(errorMessage))
+            {
+                Snackbar.Add("Account created successfully. Please login.", Severity.Success);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Signup error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

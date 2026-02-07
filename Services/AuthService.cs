@@ -30,18 +30,27 @@ namespace Blog.Frontend.Services
             }
         }
 
-        public async Task<bool> Signup(SignupDto model)
+        public async Task<string?> Signup(SignupDto model)
         {
             try
             {
                 var response = await _http.PostAsJsonAsync("api/auth/signup", model);
-                return response.IsSuccessStatusCode;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return null; // success
+                }
+
+                // Read backend error message
+                var error = await response.Content.ReadAsStringAsync();
+                return string.IsNullOrWhiteSpace(error) ? "Signup failed" : error;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return ex.Message;
             }
         }
+
     }
 
     public class AuthResponse

@@ -1,0 +1,167 @@
+﻿@page "/test-auth"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" Class="mb-4">🔧 Authentication Test</MudText>
+
+        <MudStack Spacing="3">
+            <!-- Test 1: Backend Ping -->
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6">Test 1: Backend Connection</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestPing" Class="mt-2">
+                    Test Backend Ping
+                </MudButton>
+                @if (!string.IsNullOrEmpty(pingResult))
+                {
+                    <MudAlert Severity="@(pingSuccess? Severity.Success: Severity.Error)" Class="mt-2">
+                        @pingResult
+                    </MudAlert>
+                }
+            </MudPaper>
+
+            <!-- Test 2: Token Status -->
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6">Test 2: Token Status</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CheckToken" Class="mt-2">
+                    Check Token
+                </MudButton>
+                @if (!string.IsNullOrEmpty(tokenResult))
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        <pre style="white-space: pre-wrap; word-wrap: break-word;">@tokenResult</pre>
+                    </MudAlert>
+                }
+            </MudPaper>
+
+            <!-- Test 3: Auth Endpoint -->
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6">Test 3: Authenticated Endpoint</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestAuthEndpoint" Class="mt-2">
+                    Test Auth Endpoint
+                </MudButton>
+                @if (!string.IsNullOrEmpty(authResult))
+                {
+                    <MudAlert Severity="@(authSuccess? Severity.Success: Severity.Error)" Class="mt-2">
+                        <pre style="white-space: pre-wrap; word-wrap: break-word;">@authResult</pre>
+                    </MudAlert>
+                }
+            </MudPaper>
+
+            <!-- Test 4: Profile Endpoint -->
+            <MudPaper Outlined="true" Class="pa-4">
+                <MudText Typo="Typo.h6">Test 4: Profile Endpoint</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestProfile" Class="mt-2">
+                    Test Profile Endpoint
+                </MudButton>
+                @if (!string.IsNullOrEmpty(profileResult))
+                {
+                    <MudAlert Severity="@(profileSuccess? Severity.Success: Severity.Error)" Class="mt-2">
+                        <pre style="white-space: pre-wrap; word-wrap: break-word;">@profileResult</pre>
+                    </MudAlert>
+                }
+            </MudPaper>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string pingResult = "";
+    private bool pingSuccess = false;
+
+    private string tokenResult = "";
+
+    private string authResult = "";
+    private bool authSuccess = false;
+
+    private string profileResult = "";
+    private bool profileSuccess = false;
+
+    private async Task TestPing()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/Test/ping");
+            var content = await response.Content.ReadAsStringAsync();
+
+            pingSuccess = response.IsSuccessStatusCode;
+            pingResult = $"Status: {response.StatusCode}\n{content}";
+        }
+        catch (Exception ex)
+        {
+            pingSuccess = false;
+            pingResult = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task CheckToken()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                tokenResult = "❌ No token found! User is not logged in.";
+            }
+            else
+            {
+                tokenResult = $"✅ Token found!\n\nFirst 50 chars: {token.Substring(0, Math.Min(50, token.Length))}...\n\nFull length: {token.Length} characters";
+            }
+        }
+        catch (Exception ex)
+        {
+            tokenResult = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task TestAuthEndpoint()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await Http.GetAsync("api/Test/auth");
+            var content = await response.Content.ReadAsStringAsync();
+
+            authSuccess = response.IsSuccessStatusCode;
+            authResult = $"Status: {response.StatusCode}\n\n{content}";
+        }
+        catch (Exception ex)
+        {
+            authSuccess = false;
+            authResult = $"Error: {ex.Message}\n\nStack: {ex.StackTrace}";
+        }
+    }
+
+    private async Task TestProfile()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            if (!string.IsNullOrEmpty(token))
+            {
+                Http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await Http.GetAsync("api/User/profile");
+            var content = await response.Content.ReadAsStringAsync();
+
+            profileSuccess = response.IsSuccessStatusCode;
+            profileResult = $"Status: {response.StatusCode}\n\n{content}";
+        }
+        catch (Exception ex)
+        {
+            profileSuccess = false;
+            profileResult = $"Error: {ex.Message}\n\nStack: {ex.StackTrace}";
+        }
+    }
+}

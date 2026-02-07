@@ -1,0 +1,456 @@
+﻿@page "/settings"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Account Settings</MudText>
+        
+        <MudTextField @bind-Value="currentEmail" 
+                     Label="Email" 
+                     Variant="Variant.Outlined" 
+                     Disabled="true"
+                     Class="mb-3" />
+        
+        <MudButton Variant="Variant.Outlined" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Email"
+                  OnClick="OpenChangeEmailDialog">
+            Change Email
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Password</MudText>
+        
+        <MudButton Variant="Variant.Outlined" 
+                  Color="Color.Primary" 
+                  StartIcon="@Icons.Material.Filled.Lock"
+                  OnClick="OpenChangePasswordDialog">
+            Change Password
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Notifications</MudText>
+        
+        <MudSwitch T="bool"
+                   @bind-Checked="emailNotifications"
+                   Label="Email notifications for new followers"
+                   Color="Color.Primary"
+                   Class="mb-2" />
+
+        <MudSwitch T="bool"
+                   @bind-Checked="postNotifications"
+                   Label="Email notifications for new posts from followed users"
+                   Color="Color.Primary"
+                   Class="mb-2" />
+
+        <MudSwitch T="bool"
+                   @bind-Checked="commentNotifications"
+                   Label="Email notifications for comments on your posts"
+                   Color="Color.Primary"
+                   Class="mb-3" />
+
+        
+
+        
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  OnClick="SaveNotificationSettings">
+            Save Notification Settings
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3">Privacy</MudText>
+        
+        <MudSwitch T="bool"
+                   @bind-Checked="privateProfile"
+                   Label="Private Profile"
+                   Color="Color.Primary"
+                   Class="mb-2" />
+        
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            When enabled, only your followers can see your posts
+        </MudText>
+        
+        <MudButton Variant="Variant.Filled" 
+                  Color="Color.Primary" 
+                  OnClick="SavePrivacySettings">
+            Save Privacy Settings
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="2">
+        <MudText Typo="Typo.h6" Class="mb-3" Color="Color.Error">Danger Zone</MudText>
+        
+        <MudButton Variant="Variant.Outlined" 
+                  Color="Color.Error" 
+                  StartIcon="@Icons.Material.Filled.Delete"
+                  OnClick="OpenDeleteAccountDialog">
+            Delete Account
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+<!-- Change Email Dialog -->
+<MudDialog @bind-IsVisible="showChangeEmailDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Change Email</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="newEmail" 
+                     Label="New Email" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Email"
+                     Class="mb-3" />
+        
+        <MudTextField @bind-Value="confirmPassword" 
+                     Label="Current Password" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Password" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => showChangeEmailDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled" 
+                  OnClick="ChangeEmail">
+            Change Email
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Change Password Dialog -->
+<MudDialog @bind-IsVisible="showChangePasswordDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Change Password</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="currentPassword" 
+                     Label="Current Password" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Password"
+                     Class="mb-3" />
+        
+        <MudTextField @bind-Value="newPassword" 
+                     Label="New Password" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Password"
+                     Class="mb-3" />
+        
+        <MudTextField @bind-Value="confirmNewPassword" 
+                     Label="Confirm New Password" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Password" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => showChangePasswordDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled" 
+                  OnClick="ChangePassword">
+            Change Password
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Delete Account Dialog -->
+<MudDialog @bind-IsVisible="showDeleteAccountDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete Account</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Error" Class="mb-3">
+            This action cannot be undone. All your posts, comments, and data will be permanently deleted.
+        </MudAlert>
+        
+        <MudTextField @bind-Value="deleteConfirmPassword" 
+                     Label="Enter your password to confirm" 
+                     Variant="Variant.Outlined" 
+                     InputType="InputType.Password" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => showDeleteAccountDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Error" 
+                  Variant="Variant.Filled" 
+                  OnClick="DeleteAccount">
+            Delete My Account
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string currentEmail = "";
+    private string newEmail = "";
+    private string confirmPassword = "";
+    
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string confirmNewPassword = "";
+    
+    private string deleteConfirmPassword = "";
+    
+    private bool emailNotifications = true;
+    private bool postNotifications = true;
+    private bool commentNotifications = true;
+    private bool privateProfile = false;
+    
+    private bool showChangeEmailDialog = false;
+    private bool showChangePasswordDialog = false;
+    private bool showDeleteAccountDialog = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var settings = await Http.GetFromJsonAsync<UserSettingsDto>("api/User/settings");
+            
+            if (settings != null)
+            {
+                currentEmail = settings.Email;
+                emailNotifications = settings.EmailNotifications;
+                postNotifications = settings.PostNotifications;
+                commentNotifications = settings.CommentNotifications;
+                privateProfile = settings.PrivateProfile;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading settings: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenChangeEmailDialog()
+    {
+        newEmail = "";
+        confirmPassword = "";
+        showChangeEmailDialog = true;
+    }
+
+    private void OpenChangePasswordDialog()
+    {
+        currentPassword = "";
+        newPassword = "";
+        confirmNewPassword = "";
+        showChangePasswordDialog = true;
+    }
+
+    private void OpenDeleteAccountDialog()
+    {
+        deleteConfirmPassword = "";
+        showDeleteAccountDialog = true;
+    }
+
+    private async Task ChangeEmail()
+    {
+        if (string.IsNullOrWhiteSpace(newEmail))
+        {
+            Snackbar.Add("Please enter a new email", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var request = new ChangeEmailDto 
+            { 
+                NewEmail = newEmail, 
+                Password = confirmPassword 
+            };
+
+            var response = await Http.PutAsJsonAsync("api/User/change-email", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Email changed successfully!", Severity.Success);
+                currentEmail = newEmail;
+                showChangeEmailDialog = false;
+            }
+            else
+            {
+                Snackbar.Add("Failed to change email", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (newPassword != confirmNewPassword)
+        {
+            Snackbar.Add("New passwords do not match", Severity.Warning);
+            return;
+        }
+
+        if (newPassword.Length < 6)
+        {
+            Snackbar.Add("Password must be at least 6 characters", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var request = new ChangePasswordDto 
+            { 
+                CurrentPassword = currentPassword, 
+                NewPassword = newPassword 
+            };
+
+            var response = await Http.PutAsJsonAsync("api/User/change-password", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Password changed successfully!", Severity.Success);
+                showChangePasswordDialog = false;
+            }
+            else
+            {
+                Snackbar.Add("Failed to change password. Check your current password.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveNotificationSettings()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var settings = new NotificationSettingsDto
+            {
+                EmailNotifications = emailNotifications,
+                PostNotifications = postNotifications,
+                CommentNotifications = commentNotifications
+            };
+
+            var response = await Http.PutAsJsonAsync("api/User/notification-settings", settings);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Notification settings saved!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SavePrivacySettings()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var settings = new PrivacySettingsDto { PrivateProfile = privateProfile };
+            var response = await Http.PutAsJsonAsync("api/User/privacy-settings", settings);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Privacy settings saved!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteAccount()
+    {
+        if (string.IsNullOrWhiteSpace(deleteConfirmPassword))
+        {
+            Snackbar.Add("Please enter your password", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.DeleteAsync($"api/User/delete-account?password={deleteConfirmPassword}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Account deleted successfully", Severity.Success);
+                await AuthState.Logout();
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete account. Check your password.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // DTOs
+    public class UserSettingsDto
+    {
+        public string Email { get; set; } = "";
+        public bool EmailNotifications { get; set; }
+        public bool PostNotifications { get; set; }
+        public bool CommentNotifications { get; set; }
+        public bool PrivateProfile { get; set; }
+    }
+
+    public class ChangeEmailDto
+    {
+        public string NewEmail { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = "";
+        public string NewPassword { get; set; } = "";
+    }
+
+    public class NotificationSettingsDto
+    {
+        public bool EmailNotifications { get; set; }
+        public bool PostNotifications { get; set; }
+        public bool CommentNotifications { get; set; }
+    }
+
+    public class PrivacySettingsDto
+    {
+        public bool PrivateProfile { get; set; }
+    }
+}

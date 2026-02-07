@@ -1,22 +1,50 @@
 ﻿@page "/"
+@using Blog.Frontend.Models
 @inject Blog.Frontend.Services.PostService PostService
 
-<h3>Public Posts</h3>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
 
-@if (message == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <p>@message</p>
-}
+    <MudText Typo="Typo.h4" Class="mb-4">
+        🌍 Home Feed
+    </MudText>
+
+    <MudDivider Class="mb-4" />
+
+    @if (loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (posts.Count == 0)
+    {
+        <MudText Color="Color.Secondary">
+            No posts available.
+        </MudText>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            @foreach (var post in posts)
+            {
+                <PostCard Post ="post" />
+            }
+        </MudStack>
+    }
+
+</MudContainer>
 
 @code {
-    string? message;
+    private List<PostDto> posts = new();
+    private bool loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        message = await PostService.GetPublicPosts();
+        try
+        {
+            posts = await PostService.GetHomeFeed();
+        }
+        finally
+        {
+            loading = false;
+        }
     }
 }

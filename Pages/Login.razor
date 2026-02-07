@@ -1,46 +1,101 @@
 ﻿@page "/login"
-@using Blog.Frontend.Services
-@inject AuthService Auth
+@using Blog.Frontend.Models
+@inject AuthService AuthService
 @inject AuthStateService AuthState
-@inject NavigationManager Nav
+@inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<MudPaper Elevation="8" Class="pa-6" Style="width:400px">
-    <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">
-        Login
-    </MudText>
-    <MudTextField @bind-Value="model.Email"
-                  Label="Email"
-                  Variant="Variant.Outlined"
-                  FullWidth />
-    <MudTextField @bind-Value="model.Password"
-                  Label="Password"
-                  Variant="Variant.Outlined"
-                  InputType="InputType.Password"
-                  FullWidth
-                  Class="mt-3" />
-    <MudButton FullWidth
-               Variant="Variant.Filled"
-               Color="Color.Primary"
-               Class="mt-5"
-               OnClick="HandleLogin">
-        Login
-    </MudButton>
-</MudPaper>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="3">
+        <MudStack Spacing="3">
+
+            <MudText Typo="Typo.h4" Align="Align.Center">
+                Welcome Back
+            </MudText>
+
+            <MudTextField @bind-Value="loginDto.Email"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Required />
+
+            <MudTextField @bind-Value="loginDto.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="@passwordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@passwordIcon"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          Required />
+
+            <MudCheckBox T="bool" @bind-Checked="rememberMe">
+                Remember me
+            </MudCheckBox>
+
+            <MudButton FullWidth
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="isLoading"
+                       OnClick="HandleLogin">
+
+                @if (isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate />
+                    <MudText Class="ml-2">Signing in...</MudText>
+                }
+                else
+                {
+                    <MudText>Sign In</MudText>
+                }
+            </MudButton>
+
+            <MudStack Row="true" Justify="Justify.Center">
+                <MudText Typo="Typo.body2">Don't have an account?</MudText>
+                <MudLink Href="/signup" Class="ml-1">Sign up</MudLink>
+            </MudStack>
+
+        </MudStack>
+    </MudPaper>
+</MudContainer>
 
 @code {
-    LoginDto model = new();
+    private LoginDto loginDto = new();
+    private bool isLoading;
+    private bool rememberMe;
+    private bool showPassword;
 
-    async Task HandleLogin()
+    private InputType passwordInputType =>
+        showPassword ? InputType.Text : InputType.Password;
+
+    private string passwordIcon =>
+        showPassword
+            ? Icons.Material.Filled.Visibility
+            : Icons.Material.Filled.VisibilityOff;
+
+    private void TogglePasswordVisibility()
+        => showPassword = !showPassword;
+
+    private async Task HandleLogin()
     {
-        var token = await Auth.Login(model);
-        if (token is null)
+        isLoading = true;
+        try
         {
-            Snackbar.Add("Invalid credentials", Severity.Error);
-            return;
+            var token = await AuthService.Login(loginDto);
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                await AuthState.SetToken(token);
+                Snackbar.Add("Login successful", Severity.Success);
+                Navigation.NavigateTo("/feed");
+            }
+            else
+            {
+                Snackbar.Add("Invalid credentials", Severity.Error);
+            }
         }
-        await AuthState.SetToken(token);
-        Snackbar.Add("Login successful", Severity.Success);
-        Nav.NavigateTo("/feed", true);
+        finally
+        {
+            isLoading = false;
+        }
     }
 }
