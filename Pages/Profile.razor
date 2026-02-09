@@ -240,11 +240,11 @@
                                   Placeholder="Write your blog post here..." />
 
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudSwitch T="bool" @bind-Checked="newPost.IsPublic" Color="Color.Primary">
-                            @(newPost.IsPublic ? "Public" : "Private")
+                        <MudSwitch T="bool" @bind-Checked="isPrivatePost" Color="Color.Warning">
+                            @(isPrivatePost ? "Private" : "Public")
                         </MudSwitch>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            @(newPost.IsPublic ? "Everyone can see this post" : "Only your followers can see this post")
+                            @(isPrivatePost ? "Only your followers can see this post" : "Everyone can see this post")
                         </MudText>
                     </MudStack>
 
@@ -307,7 +307,7 @@
                     @foreach (var post in userPosts)
                     {
                         <MudItem xs="12" sm="6" md="4">
-                            <MudCard Outlined="true" Style="cursor: pointer;" @onclick="@(() => ViewPost(post.Id))">
+                            <MudCard Outlined="true" Style="cursor: pointer;" @onclick="@(() => ViewPost(post))">
                                 <MudCardMedia Height="200" Image="@GetPostThumbnail(post)" />
                                 <MudCardContent>
                                     <MudStack Spacing="1">
@@ -368,6 +368,7 @@
     private bool isSaving = false;
     private bool showCreatePost = false;
     private bool isPublishing = false;
+    private bool isPrivatePost = false; // NEW: Track private post toggle
 
     private UpdateProfileDto editModel = new();
     private CreatePostDto newPost = new();
@@ -481,7 +482,7 @@
         previewImageUrl =
             $"data:{file.ContentType};base64,{Convert.ToBase64String(selectedImageBytes)}";
 
-        showCropDialog = false; // ❌ don’t force crop
+        showCropDialog = false; // ❌ don't force crop
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -633,12 +634,42 @@
         }
     }
 
+    private async Task LoadUserPosts()
+    {
+        if (userProfile == null) return;
+
+        try
+        {
+            var postsEndpoint = isOwnProfile
+                ? "api/Post/my-posts"
+                : $"api/Post/user/{userProfile.Id}";
+
+            var postsResponse = await Http.GetAsync(postsEndpoint);
+            if (postsResponse.IsSuccessStatusCode)
+            {
+                userPosts = await postsResponse.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
+            }
+            else
+            {
+                userPosts = new();
+            }
+
+            StateHasChanged();
+        }
+        catch
+        {
+            userPosts = new();
+        }
+    }
+
     private void ToggleCreatePost()
     {
         showCreatePost = !showCreatePost;
         if (showCreatePost)
         {
-            newPost = new CreatePostDto { IsPublic = true };
+            // Reset to default: private post
+            newPost = new CreatePostDto { IsPublic = false };
+            isPrivatePost = true; // Switch starts as ON (private)
         }
     }
 
@@ -646,6 +677,7 @@
     {
         showCreatePost = false;
         newPost = new CreatePostDto();
+        isPrivatePost = true; // Reset to private
     }
 
     private async Task PublishPost()
@@ -657,15 +689,23 @@
         }
 
         isPublishing = true;
+
         try
         {
-            var response = await Http.PostAsJsonAsync("api/Post", newPost);
+            // Set IsPublic based on the inverse of isPrivatePost
+            newPost.IsPublic = !isPrivatePost;
+
+            var request = await CreateRequest(HttpMethod.Post, "api/Post");
+            request.Content = JsonContent.Create(newPost);
+
+            var response = await Http.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
                 Snackbar.Add("Post published successfully!", Severity.Success);
                 showCreatePost = false;
-                newPost = new CreatePostDto { IsPublic = true };
+                newPost = new CreatePostDto { IsPublic = false };
+                isPrivatePost = true; // Reset to private
                 await LoadProfile();
             }
             else
@@ -773,6 +813,9 @@
                 {
                     userProfile.FollowerCount += isFollowing ? 1 : -1;
                 }
+
+                // ✅ Reload posts to show/hide private posts based on follow status
+                await LoadUserPosts();
             }
         }
         catch (Exception ex)
@@ -798,9 +841,28 @@
 
     private void ShowFollowers() => Snackbar.Add("Followers list coming soon!", Severity.Info);
     private void ShowFollowing() => Snackbar.Add("Following list coming soon!", Severity.Info);
-    private void ViewPost(Guid postId) => Navigation.NavigateTo($"/post/{postId}");
     private string GetPostThumbnail(PostDto post) => $"https://via.placeholder.com/400x200/6366f1/ffffff?text={Uri.EscapeDataString(post.Title)}";
     private string GetUserInitial() => userProfile != null && !string.IsNullOrWhiteSpace(userProfile.Username) ? userProfile.Username[0].ToString().ToUpper() : "?";
+
+
+    private async Task ViewPost(PostDto post)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Post"] = post
+        };
+
+        await DialogService.ShowAsync<PostDetailsDialog>(
+            post.Title,
+            parameters,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                CloseButton = true
+            }
+        );
+    }
 
     public class UserProfileDto
     {

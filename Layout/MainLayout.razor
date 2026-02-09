@@ -3,10 +3,6 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<MudThemeProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-
 <MudLayout>
 
     <!-- TOP APP BAR -->
@@ -19,7 +15,7 @@
                            OnClick="ToggleDrawer" />
         }
 
-        <!-- CENTER TITLE WHEN DRAWER CLOSED -->
+        <!-- CENTER TITLE -->
         <MudText Typo="Typo.h6"
                  Align="Align.Center"
                  Class="flex-grow-1">
@@ -45,7 +41,7 @@
         }
     </MudAppBar>
 
-    <!-- ICON-ONLY DRAWER -->
+    <!-- SIDE DRAWER -->
     @if (isLoggedIn)
     {
         <MudDrawer @bind-Open="drawerOpen"
@@ -60,7 +56,6 @@
             </div>
 
         </MudDrawer>
-
     }
 
     <!-- MAIN CONTENT -->
@@ -98,4 +93,4 @@
     {
         AuthState.OnChange -= HandleAuthChanged;
     }
-}
+}   

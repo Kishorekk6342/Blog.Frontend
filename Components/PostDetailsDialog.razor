@@ -1,0 +1,32 @@
+﻿@using Blog.Frontend.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pb-4">
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+            </MudText>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.body1">
+                @Post.Content
+            </MudText>
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference DialogReference { get; set; } = default!;
+
+    [Parameter]
+    public PostDto Post { get; set; } = default!;
+
+    private void Close()
+    {
+        DialogReference.Close();
+    }
+}
