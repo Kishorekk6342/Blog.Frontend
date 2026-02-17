@@ -15,10 +15,7 @@
                            OnClick="ToggleDrawer" />
         }
 
-        <!-- CENTER TITLE -->
-        <MudText Typo="Typo.h6"
-                 Align="Align.Center"
-                 Class="flex-grow-1">
+        <MudText Typo="Typo.h6" Class="flex-grow-1" Align="Align.Center">
             Blog App
         </MudText>
 
@@ -26,9 +23,7 @@
 
         @if (!isLoggedIn)
         {
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Inherit"
-                       Href="/login">
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">
                 Login
             </MudButton>
 
@@ -51,24 +46,20 @@
                    Elevation="2"
                    ClipMode="DrawerClipMode.Never">
 
-            <div style="height:100%; display:flex;">
-                <NavMenu DrawerOpen="drawerOpen" />
-            </div>
+            <NavMenu DrawerOpen="drawerOpen" />
 
         </MudDrawer>
     }
 
     <!-- MAIN CONTENT -->
     <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-            @Body
-        </MudContainer>
+        @Body
     </MudMainContent>
 
 </MudLayout>
 
 @code {
-    private bool drawerOpen = false;
+    private bool drawerOpen;
     private bool isLoggedIn;
 
     protected override async Task OnInitializedAsync()
@@ -84,13 +75,10 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void ToggleDrawer()
-    {
-        drawerOpen = !drawerOpen;
-    }
+    private void ToggleDrawer() => drawerOpen = !drawerOpen;
 
     public void Dispose()
     {
         AuthState.OnChange -= HandleAuthChanged;
     }
-}   
+}

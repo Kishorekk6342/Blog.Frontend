@@ -1,4 +1,4 @@
-html, body {
+﻿html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
@@ -18,6 +18,22 @@ a, .btn-link {
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+
+.post-menu {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    /* 🔑 CRITICAL FIX */
+    width: auto;
+    height: auto;
+    pointer-events: auto;
+}
+
+.post-card {
+    position: relative;
 }
 
 .content {

@@ -19,7 +19,7 @@
     {
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
-        public bool IsPublic { get; set; } = true;
+        public bool IsPublic { get; set; }   // ❌ NO DEFAULT VALUE
     }
 
     public class UpdatePostDto
@@ -27,5 +27,13 @@
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public bool IsPublic { get; set; }
+    }
+
+    public class UserSearchResultDto
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = "";
+        public string? Bio { get; set; }
+        public string? ProfilePictureUrl { get; set; }
     }
 }
