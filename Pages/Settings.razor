@@ -3,41 +3,42 @@
 @inject AuthStateService AuthState
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Account Settings</MudText>
-        
-        <MudTextField @bind-Value="currentEmail" 
-                     Label="Email" 
-                     Variant="Variant.Outlined" 
-                     Disabled="true"
-                     Class="mb-3" />
-        
-        <MudButton Variant="Variant.Outlined" 
-                  Color="Color.Primary" 
-                  StartIcon="@Icons.Material.Filled.Email"
-                  OnClick="OpenChangeEmailDialog">
+
+        <MudTextField @bind-Value="currentEmail"
+                      Label="Email"
+                      Variant="Variant.Outlined"
+                      Disabled="true"
+                      Class="mb-3" />
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Email"
+                   OnClick="OpenChangeEmailDialog">
             Change Email
         </MudButton>
     </MudPaper>
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Password</MudText>
-        
-        <MudButton Variant="Variant.Outlined" 
-                  Color="Color.Primary" 
-                  StartIcon="@Icons.Material.Filled.Lock"
-                  OnClick="OpenChangePasswordDialog">
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Lock"
+                   OnClick="OpenChangePasswordDialog">
             Change Password
         </MudButton>
     </MudPaper>
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Notifications</MudText>
-        
+
         <MudSwitch T="bool"
                    @bind-Checked="emailNotifications"
                    Label="Email notifications for new followers"
@@ -56,43 +57,40 @@
                    Color="Color.Primary"
                    Class="mb-3" />
 
-        
-
-        
-        <MudButton Variant="Variant.Filled" 
-                  Color="Color.Primary" 
-                  OnClick="SaveNotificationSettings">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveNotificationSettings">
             Save Notification Settings
         </MudButton>
     </MudPaper>
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Privacy</MudText>
-        
+
         <MudSwitch T="bool"
                    @bind-Checked="privateProfile"
                    Label="Private Profile"
                    Color="Color.Primary"
                    Class="mb-2" />
-        
+
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
             When enabled, only your followers can see your posts
         </MudText>
-        
-        <MudButton Variant="Variant.Filled" 
-                  Color="Color.Primary" 
-                  OnClick="SavePrivacySettings">
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SavePrivacySettings">
             Save Privacy Settings
         </MudButton>
     </MudPaper>
 
     <MudPaper Class="pa-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3" Color="Color.Error">Danger Zone</MudText>
-        
-        <MudButton Variant="Variant.Outlined" 
-                  Color="Color.Error" 
-                  StartIcon="@Icons.Material.Filled.Delete"
-                  OnClick="OpenDeleteAccountDialog">
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.Delete"
+                   OnClick="OpenDeleteAccountDialog">
             Delete Account
         </MudButton>
     </MudPaper>
@@ -104,22 +102,22 @@
         <MudText Typo="Typo.h6">Change Email</MudText>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="newEmail" 
-                     Label="New Email" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Email"
-                     Class="mb-3" />
-        
-        <MudTextField @bind-Value="confirmPassword" 
-                     Label="Current Password" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Password" />
+        <MudTextField @bind-Value="newEmail"
+                      Label="New Email"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Email"
+                      Class="mb-3" />
+
+        <MudTextField @bind-Value="confirmPassword"
+                      Label="Current Password"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => showChangeEmailDialog = false">Cancel</MudButton>
-        <MudButton Color="Color.Primary" 
-                  Variant="Variant.Filled" 
-                  OnClick="ChangeEmail">
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="ChangeEmail">
             Change Email
         </MudButton>
     </DialogActions>
@@ -131,28 +129,28 @@
         <MudText Typo="Typo.h6">Change Password</MudText>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="currentPassword" 
-                     Label="Current Password" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Password"
-                     Class="mb-3" />
-        
-        <MudTextField @bind-Value="newPassword" 
-                     Label="New Password" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Password"
-                     Class="mb-3" />
-        
-        <MudTextField @bind-Value="confirmNewPassword" 
-                     Label="Confirm New Password" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Password" />
+        <MudTextField @bind-Value="currentPassword"
+                      Label="Current Password"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      Class="mb-3" />
+
+        <MudTextField @bind-Value="newPassword"
+                      Label="New Password"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      Class="mb-3" />
+
+        <MudTextField @bind-Value="confirmNewPassword"
+                      Label="Confirm New Password"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => showChangePasswordDialog = false">Cancel</MudButton>
-        <MudButton Color="Color.Primary" 
-                  Variant="Variant.Filled" 
-                  OnClick="ChangePassword">
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="ChangePassword">
             Change Password
         </MudButton>
     </DialogActions>
@@ -161,24 +159,36 @@
 <!-- Delete Account Dialog -->
 <MudDialog @bind-IsVisible="showDeleteAccountDialog">
     <TitleContent>
-        <MudText Typo="Typo.h6">Delete Account</MudText>
+        <MudText Typo="Typo.h6" Color="Color.Error">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+            Delete Account - Final Warning
+        </MudText>
     </TitleContent>
     <DialogContent>
         <MudAlert Severity="Severity.Error" Class="mb-3">
-            This action cannot be undone. All your posts, comments, and data will be permanently deleted.
+            <strong>⚠️ THIS ACTION CANNOT BE UNDONE!</strong><br />
+            All your posts, comments, and data will be permanently deleted forever.
         </MudAlert>
-        
-        <MudTextField @bind-Value="deleteConfirmPassword" 
-                     Label="Enter your password to confirm" 
-                     Variant="Variant.Outlined" 
-                     InputType="InputType.Password" />
+
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Type your password below to confirm account deletion:
+        </MudText>
+
+        <MudTextField @bind-Value="deleteConfirmPassword"
+                      Label="Enter your password to confirm deletion"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => showDeleteAccountDialog = false">Cancel</MudButton>
-        <MudButton Color="Color.Error" 
-                  Variant="Variant.Filled" 
-                  OnClick="DeleteAccount">
-            Delete My Account
+        <MudButton OnClick="CancelDeleteDialog">
+            No, Cancel
+        </MudButton>
+        <MudButton Color="Color.Error"
+                   Variant="Variant.Filled"
+                   OnClick="DeleteAccount"
+                   Disabled="string.IsNullOrWhiteSpace(deleteConfirmPassword)">
+            <MudIcon Icon="@Icons.Material.Filled.DeleteForever" Class="mr-1" />
+            Yes, Delete Forever
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -187,18 +197,19 @@
     private string currentEmail = "";
     private string newEmail = "";
     private string confirmPassword = "";
-    
+
     private string currentPassword = "";
     private string newPassword = "";
     private string confirmNewPassword = "";
-    
+
     private string deleteConfirmPassword = "";
-    
+
     private bool emailNotifications = true;
     private bool postNotifications = true;
     private bool commentNotifications = true;
     private bool privateProfile = false;
-    
+    private bool originalPrivateProfile = false;
+
     private bool showChangeEmailDialog = false;
     private bool showChangePasswordDialog = false;
     private bool showDeleteAccountDialog = false;
@@ -213,11 +224,11 @@
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
             var settings = await Http.GetFromJsonAsync<UserSettingsDto>("api/User/settings");
-            
+
             if (settings != null)
             {
                 currentEmail = settings.Email;
@@ -225,6 +236,9 @@
                 postNotifications = settings.PostNotifications;
                 commentNotifications = settings.CommentNotifications;
                 privateProfile = settings.PrivateProfile;
+                originalPrivateProfile = settings.PrivateProfile;
+
+                Console.WriteLine($"[LOADED] PrivateProfile from server: {settings.PrivateProfile}");
             }
         }
         catch (Exception ex)
@@ -254,6 +268,12 @@
         showDeleteAccountDialog = true;
     }
 
+    private void CancelDeleteDialog()
+    {
+        showDeleteAccountDialog = false;
+        deleteConfirmPassword = string.Empty;
+    }
+
     private async Task ChangeEmail()
     {
         if (string.IsNullOrWhiteSpace(newEmail))
@@ -265,13 +285,13 @@
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var request = new ChangeEmailDto 
-            { 
-                NewEmail = newEmail, 
-                Password = confirmPassword 
+            var request = new ChangeEmailDto
+            {
+                NewEmail = newEmail,
+                Password = confirmPassword
             };
 
             var response = await Http.PutAsJsonAsync("api/User/change-email", request);
@@ -284,7 +304,8 @@
             }
             else
             {
-                Snackbar.Add("Failed to change email", Severity.Error);
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to change email: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -310,13 +331,13 @@
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var request = new ChangePasswordDto 
-            { 
-                CurrentPassword = currentPassword, 
-                NewPassword = newPassword 
+            var request = new ChangePasswordDto
+            {
+                CurrentPassword = currentPassword,
+                NewPassword = newPassword
             };
 
             var response = await Http.PutAsJsonAsync("api/User/change-password", request);
@@ -328,7 +349,8 @@
             }
             else
             {
-                Snackbar.Add("Failed to change password. Check your current password.", Severity.Error);
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to change password: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -342,7 +364,7 @@
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
             var settings = new NotificationSettingsDto
@@ -358,6 +380,11 @@
             {
                 Snackbar.Add("Notification settings saved!", Severity.Success);
             }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to save notification settings: {error}", Severity.Error);
+            }
         }
         catch (Exception ex)
         {
@@ -367,10 +394,12 @@
 
     private async Task SavePrivacySettings()
     {
+        Console.WriteLine($"[SAVING] Sending PrivateProfile={privateProfile} to server");
+
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
             var settings = new PrivacySettingsDto { PrivateProfile = privateProfile };
@@ -378,13 +407,35 @@
 
             if (response.IsSuccessStatusCode)
             {
-                Snackbar.Add("Privacy settings saved!", Severity.Success);
+                // Reload to verify what was actually saved
+                await Task.Delay(200); // Small delay to ensure DB update
+                await LoadSettings();
+
+                // Show message based on what was ACTUALLY saved (not what we think we saved)
+                var statusMessage = privateProfile ? "private" : "public";
+                Snackbar.Add($"Profile is now {statusMessage}", Severity.Success);
+                Console.WriteLine($"[SUCCESS] Server confirmed PrivateProfile={privateProfile}");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to save: {error}", Severity.Error);
+                Console.WriteLine($"[ERROR] Response: {error}");
+
+                // Revert
+                privateProfile = originalPrivateProfile;
             }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Console.WriteLine($"[EXCEPTION] {ex.Message}");
+
+            // Revert
+            privateProfile = originalPrivateProfile;
         }
+
+        StateHasChanged();
     }
 
     private async Task DeleteAccount()
@@ -395,28 +446,48 @@
             return;
         }
 
+        Console.WriteLine("[DELETE] Attempting to delete account...");
+
         try
         {
             var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
+            Http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var response = await Http.DeleteAsync($"api/User/delete-account?password={deleteConfirmPassword}");
+            var request = new HttpRequestMessage(HttpMethod.Delete, "api/User/delete-account")
+            {
+                Content = JsonContent.Create(new DeleteAccountDto { Password = deleteConfirmPassword })
+            };
+
+            var response = await Http.SendAsync(request);
+
+            Console.WriteLine($"[DELETE] Response status: {response.StatusCode}");
 
             if (response.IsSuccessStatusCode)
             {
+                showDeleteAccountDialog = false;
                 Snackbar.Add("Account deleted successfully", Severity.Success);
+                Console.WriteLine("[DELETE] Success - logging out...");
+
+                await Task.Delay(1500);
                 await AuthState.Logout();
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("/", true);
             }
             else
             {
-                Snackbar.Add("Failed to delete account. Check your password.", Severity.Error);
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to delete account: {error}", Severity.Error);
+                Console.WriteLine($"[DELETE] Failed: {error}");
             }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Console.WriteLine($"[DELETE] Exception: {ex.Message}");
+        }
+        finally
+        {
+            deleteConfirmPassword = "";
         }
     }
 
@@ -452,5 +523,10 @@
     public class PrivacySettingsDto
     {
         public bool PrivateProfile { get; set; }
+    }
+
+    public class DeleteAccountDto
+    {
+        public string Password { get; set; } = "";
     }
 }

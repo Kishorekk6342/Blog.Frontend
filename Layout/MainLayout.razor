@@ -1,12 +1,14 @@
 ﻿@inherits LayoutComponentBase
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IDialogService DialogService
 @implements IDisposable
 
 <MudLayout>
-
     <!-- TOP APP BAR -->
     <MudAppBar Elevation="1" Color="Color.Primary">
+        <!-- LEFT: MENU ICON -->
         @if (isLoggedIn)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
@@ -14,19 +16,33 @@
                            Edge="Edge.Start"
                            OnClick="ToggleDrawer" />
         }
-
-        <MudText Typo="Typo.h6" Class="flex-grow-1" Align="Align.Center">
+        <MudSpacer />
+        
+        <!-- CENTER: TITLE -->
+        <MudText Typo="Typo.h6" Align="Align.Center">
             Blog App
         </MudText>
-
         <MudSpacer />
-
-        @if (!isLoggedIn)
+        
+        <!-- RIGHT: NOTIFICATION / AUTH BUTTONS -->
+        @if (isLoggedIn)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">
+            <MudBadge Content="@notificationCount" 
+                      Visible="@(notificationCount > 0)" 
+                      Color="Color.Error" 
+                      Overlap="true">
+                <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                               Color="Color.Inherit"
+                               OnClick="OpenNotificationDialog" />
+            </MudBadge>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Inherit"
+                       Href="/login">
                 Login
             </MudButton>
-
             <MudButton Variant="Variant.Filled"
                        Color="Color.Secondary"
                        Class="ml-2"
@@ -35,7 +51,7 @@
             </MudButton>
         }
     </MudAppBar>
-
+    
     <!-- SIDE DRAWER -->
     @if (isLoggedIn)
     {
@@ -45,28 +61,106 @@
                    Width="220px"
                    Elevation="2"
                    ClipMode="DrawerClipMode.Never">
-
             <NavMenu DrawerOpen="drawerOpen" />
-
         </MudDrawer>
     }
-
+    
     <!-- MAIN CONTENT -->
     <MudMainContent>
         @Body
     </MudMainContent>
-
 </MudLayout>
+
+<!-- Notification Dialog -->
+<MudDialog @bind-IsVisible="showNotificationDialog" MaxWidth="MaxWidth.Small">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" />
+            Notifications
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (isLoadingNotifications)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="pa-4">
+                <MudProgressCircular Indeterminate="true" />
+            </MudStack>
+        }
+        else if (notifications == null || !notifications.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+                <MudIcon Icon="@Icons.Material.Outlined.Notifications" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">No notifications</MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudList T="string" Clickable="false">
+                @foreach (var notification in notifications)
+                {
+                    <MudListItem T="string" Class="@(notification.IsRead ? "" : "mud-primary-hover")">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body2" Style="@(notification.IsRead ? "" : "font-weight: bold")">
+                                @notification.Message
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @GetTimeAgo(notification.CreatedAt)
+                            </MudText>
+                        </MudStack>
+                        
+                        @if (notification.Type == "FollowRequest")
+                        {
+                            <MudStack Row="true" Spacing="1" Class="mt-2">
+                                <MudButton Size="Size.Small" 
+                                          Variant="Variant.Filled" 
+                                          Color="Color.Primary"
+                                          OnClick="@(() => AcceptFollowRequest(notification.RelatedId))">
+                                    Accept
+                                </MudButton>
+                                <MudButton Size="Size.Small" 
+                                          Variant="Variant.Outlined" 
+                                          Color="Color.Secondary"
+                                          OnClick="@(() => DeclineFollowRequest(notification.RelatedId))">
+                                    Decline
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (notifications != null && notifications.Any(n => !n.IsRead))
+        {
+            <MudButton OnClick="MarkAllAsRead">Mark All as Read</MudButton>
+        }
+        <MudButton Color="Color.Primary" OnClick="() => showNotificationDialog = false">Close</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private bool drawerOpen;
     private bool isLoggedIn;
+    private int notificationCount = 0;
+    private bool showNotificationDialog = false;
+    private bool isLoadingNotifications = false;
+    private List<NotificationDto>? notifications;
 
     protected override async Task OnInitializedAsync()
     {
         AuthState.OnChange += HandleAuthChanged;
         await AuthState.InitializeAsync();
         isLoggedIn = AuthState.IsLoggedIn();
+
+        if (isLoggedIn)
+        {
+            await LoadNotifications();
+            
+            // Optional: Set up periodic refresh every 30 seconds
+            // StartNotificationPolling();
+        }
     }
 
     private void HandleAuthChanged()
@@ -77,8 +171,178 @@
 
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
 
+    private async Task OpenNotificationDialog()
+    {
+        showNotificationDialog = true;
+        await LoadNotifications();
+    }
+
+    private async Task LoadNotifications()
+    {
+        isLoadingNotifications = true;
+        StateHasChanged();
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                notifications = new();
+                notificationCount = 0;
+                return;
+            }
+
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.GetAsync("api/Notification");
+
+            if (response.IsSuccessStatusCode)
+            {
+                notifications = await response.Content.ReadFromJsonAsync<List<NotificationDto>>();
+                notificationCount = notifications?.Count(n => !n.IsRead) ?? 0;
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Endpoint doesn't exist yet - use empty list
+                notifications = new();
+                notificationCount = 0;
+            }
+            else
+            {
+                notifications = new();
+                notificationCount = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading notifications: {ex.Message}");
+            notifications = new();
+            notificationCount = 0;
+        }
+        finally
+        {
+            isLoadingNotifications = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.PutAsync("api/Notification/mark-all-read", null);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                if (notifications != null)
+                {
+                    foreach (var notification in notifications)
+                    {
+                        notification.IsRead = true;
+                    }
+                }
+                notificationCount = 0;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking notifications as read: {ex.Message}");
+        }
+    }
+
+    private async Task AcceptFollowRequest(Guid? requestId)
+    {
+        if (!requestId.HasValue) return;
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.PostAsync($"api/Follow/accept/{requestId}", null);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // Remove notification from list
+                if (notifications != null)
+                {
+                    notifications.RemoveAll(n => n.RelatedId == requestId);
+                    notificationCount = notifications.Count(n => !n.IsRead);
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error accepting follow request: {ex.Message}");
+        }
+    }
+
+    private async Task DeclineFollowRequest(Guid? requestId)
+    {
+        if (!requestId.HasValue) return;
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.DeleteAsync($"api/Follow/decline/{requestId}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                // Remove notification from list
+                if (notifications != null)
+                {
+                    notifications.RemoveAll(n => n.RelatedId == requestId);
+                    notificationCount = notifications.Count(n => !n.IsRead);
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error declining follow request: {ex.Message}");
+        }
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        
+        return dateTime.ToString("MMM dd");
+    }
+
     public void Dispose()
     {
         AuthState.OnChange -= HandleAuthChanged;
+    }
+
+    // DTOs
+    public class NotificationDto
+    {
+        public Guid Id { get; set; }
+        public string Message { get; set; } = "";
+        public string Type { get; set; } = ""; // "FollowRequest", "NewPost", "NewFollower", etc.
+        public Guid? RelatedId { get; set; } // ID of the follow request, post, etc.
+        public bool IsRead { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
