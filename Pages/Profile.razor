@@ -110,25 +110,13 @@
                                 }
                                 else
                                 {
-                                <MudButton Variant="Variant.Filled"
-                                           Color="@(isFollowing ? Color.Secondary : Color.Primary)"
-                                           Size="Size.Small"
-                                           OnClick="ToggleFollow"
-                                           Disabled="isFollowLoading">
-
-                                    @if (isFollowing)
-                                    {
-                                        <text>Unfollow</text>
-                                    }
-                                    else if (followRequestPending)
-                                    {
-                                        <text>Request Sent</text>
-                                    }
-                                    else
-                                    {
-                                        <text>Follow</text>
-                                    }
-                                </MudButton>
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="@(isFollowing ? Color.Secondary : Color.Primary)"
+                                               Size="Size.Small"
+                                               OnClick="ToggleFollow"
+                                               Disabled="isFollowLoading">
+                                        @(isFollowing ? "Unfollow" : "Follow")
+                                    </MudButton>
                                 }
                             </MudStack>
 
@@ -437,7 +425,6 @@
         private bool showCropDialog = false;
         private bool isEditMode = false;
         private Guid? editingPostId = null;
-    private bool followRequestPending = false;
     private PostVisibility postVisibility = PostVisibility.Public; // default
 
         protected override async Task OnParametersSetAsync()
@@ -741,24 +728,22 @@
             await JS.InvokeVoidAsync("imageCropper.destroy");
         }
 
-    private async Task CheckFollowStatus()
-    {
-        try
+        private async Task CheckFollowStatus()
         {
-            var response = await Http.GetAsync($"api/Follow/status/{UserId}");
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var result = await response.Content.ReadFromJsonAsync<FollowStatusDto>();
-                isFollowing = result?.IsFollowing ?? false;
-                followRequestPending = result?.IsPending ?? false; // ADD THIS LINE
+                var response = await Http.GetAsync($"api/Follow/status/{UserId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<FollowStatusDto>();
+                    isFollowing = result?.IsFollowing ?? false;
+                }
+            }
+            catch
+            {
+                isFollowing = false;
             }
         }
-        catch
-        {
-            isFollowing = false;
-            followRequestPending = false; // ADD THIS LINE
-        }
-    }
 
         private async Task LoadUserPosts()
         {
@@ -932,94 +917,51 @@
             }
         }
 
-    private async Task ToggleFollow()
-    {
-        if (!UserId.HasValue || UserId == Guid.Empty)
-            return;
-
-        isFollowLoading = true;
-
-        try
+        private async Task ToggleFollow()
         {
-            var endpoint = $"api/Follow/{UserId}";
-            HttpResponseMessage response;
+            if (!UserId.HasValue || UserId == Guid.Empty)
+                return;
 
-            if (isFollowing)
+            isFollowLoading = true;
+
+            try
             {
-                // Unfollow
-                var request = await CreateRequest(HttpMethod.Delete, endpoint);
-                response = await Http.SendAsync(request);
+                var endpoint = $"api/Follow/{UserId}";
+                HttpResponseMessage response;
+
+                if (isFollowing)
+                {
+                    var request = await CreateRequest(HttpMethod.Delete, endpoint);
+                    response = await Http.SendAsync(request);
+                }
+                else
+                {
+                    var request = await CreateRequest(HttpMethod.Post, endpoint);
+                    response = await Http.SendAsync(request);
+                }
 
                 if (response.IsSuccessStatusCode)
                 {
-                    isFollowing = false;
-                    followRequestPending = false;
-                    Snackbar.Add("Unfollowed successfully!", Severity.Success);
+                    isFollowing = !isFollowing;
+                    Snackbar.Add(isFollowing ? "Followed successfully!" : "Unfollowed successfully!", Severity.Success);
 
                     if (userProfile != null)
                     {
-                        userProfile.FollowerCount--;
+                        userProfile.FollowerCount += isFollowing ? 1 : -1;
                     }
+
+                    await LoadUserPosts();
                 }
             }
-            else if (followRequestPending)
+            catch (Exception ex)
             {
-                // Cancel pending request
-                var request = await CreateRequest(HttpMethod.Delete, $"{endpoint}/cancel-request");
-                response = await Http.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    followRequestPending = false;
-                    isFollowing = false;
-                    Snackbar.Add("Follow request cancelled", Severity.Success);
-                }
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
             }
-            else
+            finally
             {
-                // Follow or send request
-                var request = await CreateRequest(HttpMethod.Post, endpoint);
-                response = await Http.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = await response.Content.ReadFromJsonAsync<FollowResponseDto>();
-
-                    if (result?.IsPending == true)
-                    {
-                        // Private profile - request sent
-                        followRequestPending = true;
-                        isFollowing = false;
-                        Snackbar.Add("Follow request sent!", Severity.Success);
-                    }
-                    else
-                    {
-                        // Public profile - followed immediately
-                        isFollowing = true;
-                        followRequestPending = false;
-                        Snackbar.Add("Followed successfully!", Severity.Success);
-
-                        if (userProfile != null)
-                        {
-                            userProfile.FollowerCount++;
-                        }
-                    }
-                }
+                isFollowLoading = false;
             }
-
-            await LoadUserPosts();
-            StateHasChanged();
         }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isFollowLoading = false;
-            StateHasChanged();
-        }
-    }
 
         private async Task<HttpRequestMessage> CreateRequest(HttpMethod method, string url)
         {
@@ -1084,15 +1026,9 @@
         {
             public string? Url { get; set; }
         }
-        public class FollowResponseDto
-        {
-            public bool IsFollowing { get; set; }
-            public bool IsPending { get; set; }
-        }
 
         public class FollowStatusDto
         {
-            public bool IsFollowing { get; set; }
-            public bool IsPending { get; set; }  // ADD THIS PROPERTY
+            public bool IsFollowing { get; set; }   
         }
     }
