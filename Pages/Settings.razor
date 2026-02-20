@@ -37,40 +37,37 @@
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Notifications</MudText>
-        
+
         <MudSwitch T="bool"
-                   @bind-Checked="emailNotifications"
+                   @bind-Value="emailNotifications"
                    Label="Email notifications for new followers"
                    Color="Color.Primary"
                    Class="mb-2" />
 
         <MudSwitch T="bool"
-                   @bind-Checked="postNotifications"
+                   @bind-Value="postNotifications"
                    Label="Email notifications for new posts from followed users"
                    Color="Color.Primary"
                    Class="mb-2" />
 
         <MudSwitch T="bool"
-                   @bind-Checked="commentNotifications"
+                   @bind-Value="commentNotifications"
                    Label="Email notifications for comments on your posts"
                    Color="Color.Primary"
                    Class="mb-3" />
 
-        
-
-        
-        <MudButton Variant="Variant.Filled" 
-                  Color="Color.Primary" 
-                  OnClick="SaveNotificationSettings">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveNotificationSettings">
             Save Notification Settings
         </MudButton>
     </MudPaper>
 
     <MudPaper Class="pa-4 mb-4" Elevation="2">
         <MudText Typo="Typo.h6" Class="mb-3">Privacy</MudText>
-        
+
         <MudSwitch T="bool"
-                   @bind-Checked="privateProfile"
+                   @bind-Value="privateProfile"
                    Label="Private Profile"
                    Color="Color.Primary"
                    Class="mb-2" />
@@ -205,19 +202,41 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Wait for token to be available
+        var token = await AuthState.GetToken();
+        if (string.IsNullOrEmpty(token))
+        {
+            Navigation.NavigateTo("/login", true);
+            return;
+        }
         await LoadSettings();
+    }
+  
+    private void OnPrivateProfileChanged(bool value)
+    {
+        privateProfile = value;
+        Console.WriteLine($"UI toggle changed to: {privateProfile}");
+    }
+
+    private async Task<HttpRequestMessage> CreateRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        var token = await AuthState.GetToken();
+        if (!string.IsNullOrEmpty(token))
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return request;
     }
 
     private async Task LoadSettings()
     {
         try
         {
-            var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var request = await CreateRequest(HttpMethod.Get, "api/User/settings");
+            var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return;
 
-            var settings = await Http.GetFromJsonAsync<UserSettingsDto>("api/User/settings");
-            
+            var settings = await response.Content.ReadFromJsonAsync<UserSettingsDto>();
             if (settings != null)
             {
                 currentEmail = settings.Email;
@@ -225,6 +244,7 @@
                 postNotifications = settings.PostNotifications;
                 commentNotifications = settings.CommentNotifications;
                 privateProfile = settings.PrivateProfile;
+                StateHasChanged();
             }
         }
         catch (Exception ex)
@@ -232,6 +252,7 @@
             Snackbar.Add($"Error loading settings: {ex.Message}", Severity.Error);
         }
     }
+
 
     private void OpenChangeEmailDialog()
     {
@@ -341,23 +362,16 @@
     {
         try
         {
-            var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var settings = new NotificationSettingsDto
+            var request = await CreateRequest(HttpMethod.Put, "api/User/notification-settings");
+            request.Content = JsonContent.Create(new NotificationSettingsDto
             {
                 EmailNotifications = emailNotifications,
                 PostNotifications = postNotifications,
                 CommentNotifications = commentNotifications
-            };
-
-            var response = await Http.PutAsJsonAsync("api/User/notification-settings", settings);
-
+            });
+            var response = await Http.SendAsync(request);
             if (response.IsSuccessStatusCode)
-            {
                 Snackbar.Add("Notification settings saved!", Severity.Success);
-            }
         }
         catch (Exception ex)
         {
@@ -367,25 +381,27 @@
 
     private async Task SavePrivacySettings()
     {
-        try
-        {
-            var token = await AuthState.GetToken();
-            Http.DefaultRequestHeaders.Authorization = 
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        Console.WriteLine($"Saving privateProfile = {privateProfile}");
 
-            var settings = new PrivacySettingsDto { PrivateProfile = privateProfile };
-            var response = await Http.PutAsJsonAsync("api/User/privacy-settings", settings);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Snackbar.Add("Privacy settings saved!", Severity.Success);
-            }
-        }
-        catch (Exception ex)
+        var request = await CreateRequest(HttpMethod.Put, "api/User/privacy-settings");
+        request.Content = JsonContent.Create(new PrivacySettingsDto
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            PrivateProfile = privateProfile
+        });
+
+        var response = await Http.SendAsync(request);
+
+        Console.WriteLine($"Privacy API Status: {response.StatusCode}");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Failed to save privacy settings", Severity.Error);
+            return;
         }
+
+        Snackbar.Add("Privacy settings saved!", Severity.Success);
     }
+
 
     private async Task DeleteAccount()
     {

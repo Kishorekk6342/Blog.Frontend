@@ -1,331 +1,345 @@
-﻿    @page "/profile"
-    @page "/profile/{UserId:guid}"
-    @inject HttpClient Http
-    @inject AuthStateService AuthState
-    @inject ISnackbar Snackbar
-    @inject NavigationManager Navigation
-    @using Blog.Frontend.Models
-    @inject IDialogService DialogService
-    @inject IJSRuntime JS
+﻿@page "/profile"
+@page "/profile/{UserId:guid}"
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@using Blog.Frontend.Models
+@inject IDialogService DialogService
+@inject IJSRuntime JS
 
-    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-        @if (isLoading)
-        {
-            <MudStack AlignItems="AlignItems.Center" Class="mt-8">
-                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-                <MudText>Loading profile...</MudText>
-            </MudStack>
-        }
-        else if (userProfile != null)
-        {
-            <!-- Profile Header Section -->
-            <MudPaper Elevation="0" Class="pa-6 mb-4">
-                <MudGrid>
-                    <!-- Profile Picture -->
-                    <MudItem xs="12" md="4" Class="d-flex flex-column align-center">
-                        <MudStack AlignItems="AlignItems.Center" Spacing="3">
-                            <!-- Profile Picture Display - ALWAYS VISIBLE -->
-                            <MudAvatar Style="width:150px;height:150px;">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="mt-8">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText>Loading profile...</MudText>
+        </MudStack>
+    }
+    else if (userProfile != null)
+    {
+        <MudPaper Elevation="0" Class="pa-6 mb-4">
+            <MudGrid>
+                <!-- Profile Picture -->
+                <MudItem xs="12" md="4" Class="d-flex flex-column align-center">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                        <MudAvatar Style="width:150px;height:150px;">
+                            @if (!string.IsNullOrEmpty(previewImageUrl))
+                            {
+                                <MudImage Src="@previewImageUrl" />
+                            }
+                            else if (!string.IsNullOrEmpty(currentImageUrl))
+                            {
+                                <MudImage Src="@currentImageUrl" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.h3">@GetUserInitial()</MudText>
+                            }
+                        </MudAvatar>
+
+                        @if (isOwnProfile && showEditDialog)
+                        {
+                            <MudStack Row="true" Spacing="1" Class="mt-2">
+                                <MudFileUpload T="IBrowserFile"
+                                               Accept="image/*"
+                                               OnFilesChanged="OnProfileImageSelected">
+                                    <ActivatorContent>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Upload"
+                                                       Color="Color.Primary" />
+                                    </ActivatorContent>
+                                </MudFileUpload>
+
                                 @if (!string.IsNullOrEmpty(previewImageUrl))
                                 {
-                                    <MudImage Src="@previewImageUrl" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Crop"
+                                                   Color="Color.Secondary"
+                                                   OnClick="@(() => showCropDialog = true)" />
                                 }
-                                else if (!string.IsNullOrEmpty(currentImageUrl))
-                                {
-                                    <MudImage Src="@currentImageUrl" />
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.h3">@GetUserInitial()</MudText>
-                                }
-                            </MudAvatar>
 
-                            @if (isOwnProfile && showEditDialog)
+                                @if (!string.IsNullOrEmpty(previewImageUrl))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                                   Color="Color.Success"
+                                                   Disabled="isSavingImage"
+                                                   OnClick="SaveProfileImage">
+                                        @if (isSavingImage)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        }
+                                    </MudIconButton>
+
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   Color="Color.Error"
+                                                   OnClick="CancelImageChange" />
+                                }
+
+                                @if (string.IsNullOrEmpty(previewImageUrl) && !string.IsNullOrEmpty(currentImageUrl))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   OnClick="DeleteProfileImage" />
+                                }
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudItem>
+
+                <!-- Profile Info -->
+                <MudItem xs="12" md="8">
+                    <MudStack Spacing="3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                            <MudText Typo="Typo.h4">@userProfile.Username</MudText>
+
+                            @if (isOwnProfile)
                             {
-                                <MudStack Row="true" Spacing="1" Class="mt-2">
-
-                                    <!-- Upload -->
-                                    <MudFileUpload T="IBrowserFile"
-                                                   Accept="image/*"
-                                                   OnFilesChanged="OnProfileImageSelected">
-                                        <ActivatorContent>
-                                            <MudIconButton Icon="@Icons.Material.Filled.Upload"
-                                                           Color="Color.Primary" />
-                                        </ActivatorContent>
-                                    </MudFileUpload>
-
-                                    <!-- Crop (OPTIONAL) -->
-                                    @if (!string.IsNullOrEmpty(previewImageUrl))
+                                <MudButton Variant="Variant.Outlined"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Edit"
+                                           OnClick="OpenEditDialog">
+                                    Edit Profile
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    @if (isFollowing)
                                     {
-                                        <MudIconButton Icon="@Icons.Material.Filled.Crop"
-                                                       Color="Color.Secondary"
-                                                       OnClick="@(() => showCropDialog = true)" />
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Secondary"
+                                                   Size="Size.Small"
+                                                   Disabled="isFollowLoading"
+                                                   OnClick="ToggleFollow">
+                                            Unfollow
+                                        </MudButton>
                                     }
-
-                                    <!-- Save -->
-                                    @if (!string.IsNullOrEmpty(previewImageUrl))
+                                    else if (followRequestPending)
                                     {
-                                        <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                                       Color="Color.Success"
-                                                       Disabled="isSavingImage"
-                                                       OnClick="SaveProfileImage">
-                                            @if (isSavingImage)
-                                            {
-                                                <MudProgressCircular Size="Size.Small"
-                                                                     Indeterminate="true" />
-                                            }
-                                        </MudIconButton>
-
-                                        <!-- Cancel -->
-                                        <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                       Color="Color.Error"
-                                                       OnClick="CancelImageChange" />
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Size="Size.Small"
+                                                   Disabled="true">
+                                            Request Sent
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Text"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="CancelFollowRequest">
+                                            Cancel
+                                        </MudButton>
                                     }
-
-                                    <!-- Delete -->
-                                    @if (string.IsNullOrEmpty(previewImageUrl) && !string.IsNullOrEmpty(currentImageUrl))
+                                    else
                                     {
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                       Color="Color.Error"
-                                                       OnClick="DeleteProfileImage" />
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   Disabled="isFollowLoading"
+                                                   OnClick="ToggleFollow">
+                                            Follow
+                                        </MudButton>
                                     }
                                 </MudStack>
                             }
                         </MudStack>
-                    </MudItem>
 
-                    <!-- Profile Info -->
-                    <MudItem xs="12" md="8">
-                        <MudStack Spacing="3">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                                <MudText Typo="Typo.h4">@userProfile.Username</MudText>
-                                @if (isOwnProfile)
-                                {
-                                    <MudButton Variant="Variant.Outlined"
-                                               Size="Size.Small"
-                                               StartIcon="@Icons.Material.Filled.Edit"
-                                               OnClick="OpenEditDialog">
-                                        Edit Profile
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Variant="Variant.Filled"
-                                               Color="@(isFollowing ? Color.Secondary : Color.Primary)"
-                                               Size="Size.Small"
-                                               OnClick="ToggleFollow"
-                                               Disabled="isFollowLoading">
-                                        @(isFollowing ? "Unfollow" : "Follow")
-                                    </MudButton>
-                                }
+                        <MudStack Row="true" Spacing="6">
+                            <MudStack Spacing="0" Class="text-center">
+                                <MudText Typo="Typo.h5"><strong>@userProfile.PostCount</strong></MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">posts</MudText>
                             </MudStack>
-
-                            <MudStack Row="true" Spacing="6">
-                                <MudStack Spacing="0" Class="text-center">
-                                    <MudText Typo="Typo.h5"><strong>@userProfile.PostCount</strong></MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">posts</MudText>
-                                </MudStack>
-                                <MudStack Spacing="0" Class="text-center" Style="cursor: pointer;" @onclick="ShowFollowers">
-                                    <MudText Typo="Typo.h5"><strong>@userProfile.FollowerCount</strong></MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">followers</MudText>
-                                </MudStack>
-                                <MudStack Spacing="0" Class="text-center" Style="cursor: pointer;" @onclick="ShowFollowing">
-                                    <MudText Typo="Typo.h5"><strong>@userProfile.FollowingCount</strong></MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">following</MudText>
-                                </MudStack>
+                            <MudStack Spacing="0" Class="text-center" Style="cursor: pointer;" @onclick="ShowFollowers">
+                                <MudText Typo="Typo.h5"><strong>@userProfile.FollowerCount</strong></MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">followers</MudText>
                             </MudStack>
-
-                            <MudStack Spacing="1">
-                                @if (!string.IsNullOrEmpty(userProfile.Bio))
-                                {
-                                    <MudText Typo="Typo.body2">@userProfile.Bio</MudText>
-                                }
-                                @if (!string.IsNullOrEmpty(userProfile.Location))
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" /> @userProfile.Location
-                                    </MudText>
-                                }
-                                @if (!string.IsNullOrEmpty(userProfile.Website))
-                                {
-                                    <MudLink Href="@userProfile.Website" Target="_blank" Typo="Typo.body2">
-                                        <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" /> @userProfile.Website
-                                    </MudLink>
-                                }
+                            <MudStack Spacing="0" Class="text-center" Style="cursor: pointer;" @onclick="ShowFollowing">
+                                <MudText Typo="Typo.h5"><strong>@userProfile.FollowingCount</strong></MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">following</MudText>
                             </MudStack>
                         </MudStack>
-                    </MudItem>
-                </MudGrid>
-            </MudPaper>
-
-            <MudDivider />
-
-            @if (showEditDialog)
-            {
-                <div class="modal-backdrop">
-                    <MudPaper Class="modal-card pa-6">
-                        <MudText Typo="Typo.h6" Class="mb-4">
-                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
-                            Edit Profile
-                        </MudText>
-
-                        <MudStack Spacing="3">
-                            <MudTextField @bind-Value="editModel.Username"
-                                          Label="Username"
-                                          Variant="Variant.Outlined" />
-
-                            <MudTextField @bind-Value="editModel.Email"
-                                          Label="Email"
-                                          Variant="Variant.Outlined"
-                                          Disabled="true" />
-
-                            <MudTextField @bind-Value="editModel.Bio"
-                                          Label="Bio"
-                                          Variant="Variant.Outlined"
-                                          Lines="4" />
-
-                            <MudTextField @bind-Value="editModel.Location"
-                                          Label="Location"
-                                          Variant="Variant.Outlined" />
-
-                            <MudTextField @bind-Value="editModel.Website"
-                                          Label="Website"
-                                          Variant="Variant.Outlined" />
-                        </MudStack>
-
-                        <MudDivider Class="my-4" />
-
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
-                            <MudButton Variant="Variant.Text" OnClick="CloseEditDialog">
-                                Cancel
-                            </MudButton>
-
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="SaveProfile"
-                                       Disabled="isSaving">
-                                @if (isSaving)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    <text>Saving...</text>
-                                }
-                                else
-                                {
-                                    <text>Save</text>
-                                }
-                            </MudButton>
-                        </MudStack>
-                    </MudPaper>
-                </div>
-            }
-
-            @if (isOwnProfile && showCreatePost)
-            {
-                <MudPaper Elevation="2" Class="pa-4 mt-4 mb-4">
-                    <MudText Typo="Typo.h6" Class="mb-3">
-                        <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Create)" />
-                        @(isEditMode ? "Edit Post" : "Create New Post")
-                    </MudText>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="newPost.Title"
-                                      Label="Title"
-                                      Variant="Variant.Outlined"
-                                      Required="true"
-                                      MaxLength="200" />
-
-                        <MudTextField @bind-Value="newPost.Content"
-                                      Label="Content"
-                                      Variant="Variant.Outlined"
-                                      Lines="10"
-                                      Required="true"
-                                      Placeholder="Write your blog post here..." />
-
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
 
                         <MudStack Spacing="1">
-                            <MudText Typo="Typo.subtitle2">Post visibility</MudText>
-
-                            <MudRadioGroup T="PostVisibility"
-                                           @bind-Value="postVisibility">
-
-                                <MudRadio T="PostVisibility"
-                                          Value="PostVisibility.Public"
-                                          Color="Color.Success">
-                                    Public (visible to everyone)
-                                </MudRadio>
-
-                                <MudRadio T="PostVisibility"
-                                          Value="PostVisibility.Private"
-                                          Color="Color.Warning">
-                                    Private (only followers can see)
-                                </MudRadio>
-
-                            </MudRadioGroup>
-                           
-                </MudStack>
-                        </MudStack>
-                        <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
-                            <MudButton Variant="Variant.Text" OnClick="CancelCreatePost">Cancel</MudButton>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="PublishPost"
-                                       Disabled="isPublishing || string.IsNullOrWhiteSpace(newPost.Title) || string.IsNullOrWhiteSpace(newPost.Content)">
-                                @if (isPublishing)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                    <text>Publishing...</text>
-                                }
-                                else
-                                {
-                                    <text>Publish</text>
-                                }
-                            </MudButton>
+                            @if (!string.IsNullOrEmpty(userProfile.Bio))
+                            {
+                                <MudText Typo="Typo.body2">@userProfile.Bio</MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(userProfile.Location))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" /> @userProfile.Location
+                                </MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(userProfile.Website))
+                            {
+                                <MudLink Href="@userProfile.Website" Target="_blank" Typo="Typo.body2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" /> @userProfile.Website
+                                </MudLink>
+                            }
                         </MudStack>
                     </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudDivider />
+
+        @if (showEditDialog)
+        {
+            <div class="modal-backdrop">
+                <MudPaper Class="modal-card pa-6">
+                    <MudText Typo="Typo.h6" Class="mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
+                        Edit Profile
+                    </MudText>
+
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="editModel.Username"
+                                      Label="Username"
+                                      Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="editModel.Email"
+                                      Label="Email"
+                                      Variant="Variant.Outlined"
+                                      Disabled="true" />
+                        <MudTextField @bind-Value="editModel.Bio"
+                                      Label="Bio"
+                                      Variant="Variant.Outlined"
+                                      Lines="4" />
+                        <MudTextField @bind-Value="editModel.Location"
+                                      Label="Location"
+                                      Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="editModel.Website"
+                                      Label="Website"
+                                      Variant="Variant.Outlined" />
+                    </MudStack>
+
+                    <MudDivider Class="my-4" />
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                        <MudButton Variant="Variant.Text" OnClick="CloseEditDialog">Cancel</MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveProfile"
+                                   Disabled="isSaving">
+                            @if (isSaving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <text>Saving...</text>
+                            }
+                            else
+                            {
+                                <text>Save</text>
+                            }
+                        </MudButton>
+                    </MudStack>
                 </MudPaper>
+            </div>
+        }
+
+        @if (isOwnProfile && showCreatePost)
+        {
+            <MudPaper Elevation="2" Class="pa-4 mt-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Create)" />
+                    @(isEditMode ? "Edit Post" : "Create New Post")
+                </MudText>
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="newPost.Title"
+                                  Label="Title"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  MaxLength="200" />
+                    <MudTextField @bind-Value="newPost.Content"
+                                  Label="Content"
+                                  Variant="Variant.Outlined"
+                                  Lines="10"
+                                  Required="true"
+                                  Placeholder="Write your blog post here..." />
+
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.subtitle2">Post visibility</MudText>
+                        <MudRadioGroup T="PostVisibility" @bind-Value="postVisibility">
+                            <MudRadio T="PostVisibility" Value="PostVisibility.Public" Color="Color.Success">
+                                Public (visible to everyone)
+                            </MudRadio>
+                            <MudRadio T="PostVisibility" Value="PostVisibility.Private" Color="Color.Warning">
+                                Private (only followers can see)
+                            </MudRadio>
+                        </MudRadioGroup>
+                    </MudStack>
+
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Text" OnClick="CancelCreatePost">Cancel</MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="PublishPost"
+                                   Disabled="isPublishing || string.IsNullOrWhiteSpace(newPost.Title) || string.IsNullOrWhiteSpace(newPost.Content)">
+                            @if (isPublishing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <text>Publishing...</text>
+                            }
+                            else
+                            {
+                                <text>Publish</text>
+                            }
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <MudPaper Elevation="0" Class="mt-4 pa-4">
+            @if (userProfile!.PrivateProfile && !isOwnProfile && !isFollowing)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                    🔒 This account is private.
+                    @if (followRequestPending)
+                    {
+                        <text> Your follow request is pending approval.</text>
+                    }
+                    else
+                    {
+                        <text> Follow to see their posts.</text>
+                    }
+                </MudAlert>
             }
 
-            <MudPaper Elevation="0" Class="mt-4 pa-4">
-                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.GridOn" /> Posts
-                    </MudText>
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.GridOn" /> Posts
+                </MudText>
+                @if (isOwnProfile)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="ToggleCreatePost"
+                               Size="Size.Small">
+                        @(showCreatePost ? "HIDE" : "CREATE POST")
+                    </MudButton>
+                }
+            </MudStack>
+
+            @if (userPosts == null || !userPosts.Any())
+            {
+                <MudStack AlignItems="AlignItems.Center" Class="pa-8">
+                    <MudIcon Icon="@Icons.Material.Outlined.CameraAlt" Size="Size.Large" />
+                    <MudText Typo="Typo.h6">No posts yet</MudText>
                     @if (isOwnProfile)
                     {
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="ToggleCreatePost"
-                                   Size="Size.Small">
-                            @(showCreatePost ? "HIDE" : "CREATE POST")
+                                   OnClick="ToggleCreatePost">
+                            Create your first post
                         </MudButton>
                     }
                 </MudStack>
-
-                @if (userPosts == null || !userPosts.Any())
-                {
-                    <MudStack AlignItems="AlignItems.Center" Class="pa-8">
-                        <MudIcon Icon="@Icons.Material.Outlined.CameraAlt" Size="Size.Large" />
-                        <MudText Typo="Typo.h6">No posts yet</MudText>
-                        @if (isOwnProfile)
-                        {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="ToggleCreatePost">
-                                Create your first post
-                            </MudButton>
-                        }
-                    </MudStack>
-                }
-                else
-                {
-                    <MudGrid>
-                        @foreach (var post in userPosts)
-                        {
-                            <MudItem xs="12" sm="6" md="4">
-
-                                <MudCard Class="post-card">
-
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var post in userPosts)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Class="post-card">
                                 @if (isOwnProfile)
                                 {
                                     <div class="post-menu" @onclick:stopPropagation>
@@ -333,522 +347,546 @@
                                                  Dense="true"
                                                  AnchorOrigin="Origin.BottomRight"
                                                  TransformOrigin="Origin.TopRight">
-
                                             <MudMenuItem OnClick="@(() => EditPost(post))">
                                                 <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
                                                 Edit
                                             </MudMenuItem>
-
                                             <MudMenuItem OnClick="@(() => DeletePost(post.Id))">
                                                 <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" />
                                                 Delete
                                             </MudMenuItem>
-
                                         </MudMenu>
                                     </div>
                                 }
-
-                                    <MudCardContent Style="cursor:pointer"
-                                                    @onclick="@(() => ViewPost(post))">
-
-                                        <MudText Typo="Typo.h6">@post.Title</MudText>
-
-                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @post.CreatedAt.ToString("MMM dd, yyyy")
-                                            </MudText>
-
-                                            <MudChip T="string"
-                                                     Size="Size.Small"
-                                                     Color="@(post.IsPublic ? Color.Success : Color.Warning)">
-                                                @(post.IsPublic ? "Public" : "Private")
-                                            </MudChip>
-                                        </MudStack>
-
-                                    </MudCardContent>
-
-                                </MudCard>
-                            </MudItem>
-                    
-             }
-                    </MudGrid>
-                }
-            </MudPaper>
-        }
-        else
-        {
-            <MudAlert Severity="Severity.Error">Profile not found</MudAlert>
-        }
-        @if (showCropDialog && !string.IsNullOrEmpty(previewImageUrl))
-        {
-            <MudDialog Open="true" MaxWidth="MaxWidth.Small">
-                <DialogContent>
-                    <img id="cropImage"
-                         src="@previewImageUrl"
-                         style="max-width:100%; max-height:400px;" />
-                </DialogContent>
-
-                <DialogActions>
-                    <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                   OnClick="CancelCrop" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                   Color="Color.Primary"
-                                   OnClick="ConfirmCrop" />
-                </DialogActions>
-            </MudDialog>
-        }
-    </MudContainer>
-
-    @code {
-        [Parameter] public Guid? UserId { get; set; }
-
-        private UserProfileDto? userProfile;
-        private List<PostDto>? userPosts;
-        private bool isLoading = true;
-        private bool isOwnProfile = false;
-        private bool isFollowing = false;
-        private bool isFollowLoading = false;
-        private bool showEditDialog = false;
-        private bool isSaving = false;
-        private bool showCreatePost = false;
-        private bool isPublishing = false;
-
-        private UpdateProfileDto editModel = new();
-        private CreatePostDto newPost = new();
-
-        private string? currentImageUrl;
-        private string? previewImageUrl;
-        private bool isSavingImage = false;
-        private byte[]? selectedImageBytes;
-        private string? selectedImageContentType;
-        private string? selectedImageName;
-        private bool showCropDialog = false;
-        private bool isEditMode = false;
-        private Guid? editingPostId = null;
-    private PostVisibility postVisibility = PostVisibility.Public; // default
-
-        protected override async Task OnParametersSetAsync()
-        {
-            await LoadProfile();
-        }
-
-    public enum PostVisibility
-    {
-        Public,
-        Private
+                                <MudCardContent Style="cursor:pointer" @onclick="@(() => ViewPost(post))">
+                                    <MudText Typo="Typo.h6">@post.Title</MudText>
+                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @post.CreatedAt.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@(post.IsPublic ? Color.Success : Color.Warning)">
+                                            @(post.IsPublic ? "Public" : "Private")
+                                        </MudChip>
+                                    </MudStack>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudPaper>
     }
-        private async Task LoadProfile()
+    else
+    {
+        <MudAlert Severity="Severity.Error">Profile not found</MudAlert>
+    }
+
+    @if (showCropDialog && !string.IsNullOrEmpty(previewImageUrl))
+    {
+        <MudDialog Open="true" MaxWidth="MaxWidth.Small">
+            <DialogContent>
+                <img id="cropImage"
+                     src="@previewImageUrl"
+                     style="max-width:100%; max-height:400px;" />
+            </DialogContent>
+            <DialogActions>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CancelCrop" />
+                <MudIconButton Icon="@Icons.Material.Filled.Check"
+                               Color="Color.Primary"
+                               OnClick="ConfirmCrop" />
+            </DialogActions>
+        </MudDialog>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? UserId { get; set; }
+
+    private UserProfileDto? userProfile;
+    private List<PostDto>? userPosts;
+    private bool isLoading = true;
+    private bool isOwnProfile = false;
+    private bool isFollowing = false;
+    private bool isFollowLoading = false;
+    private bool followRequestPending = false;
+    private bool showEditDialog = false;
+    private bool isSaving = false;
+    private bool showCreatePost = false;
+    private bool isPublishing = false;
+    private bool isEditMode = false;
+    private Guid? editingPostId = null;
+    private PostVisibility postVisibility = PostVisibility.Public;
+
+    private UpdateProfileDto editModel = new();
+    private CreatePostDto newPost = new();
+
+    private string? currentImageUrl;
+    private string? previewImageUrl;
+    private bool isSavingImage = false;
+    private byte[]? selectedImageBytes;
+    private string? selectedImageContentType;
+    private string? selectedImageName;
+    private bool showCropDialog = false;
+
+    public enum PostVisibility { Public, Private }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadProfile();
+    }
+
+    private async Task LoadProfile()
+    {
+        isLoading = true;
+        showCreatePost = false;
+        StateHasChanged();
+
+        try
         {
-            isLoading = true;
-            showCreatePost = false;
-            StateHasChanged();
+            var endpoint = UserId == null || UserId == Guid.Empty
+                ? "api/User/profile"
+                : $"api/User/profile/{UserId}";
 
-            try
+            var profileRequest = await CreateRequest(HttpMethod.Get, endpoint);
+            var profileResponse = await Http.SendAsync(profileRequest);
+
+            if (profileResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                var token = await AuthState.GetToken();
-                if (!string.IsNullOrEmpty(token))
-                {
-                    Http.DefaultRequestHeaders.Authorization =
-                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                }
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
 
-                var endpoint = UserId == null || UserId == Guid.Empty
-                    ? "api/User/profile"
-                    : $"api/User/profile/{UserId}";
+            if (!profileResponse.IsSuccessStatusCode)
+            {
+                userProfile = null;
+                return;
+            }
 
-                userProfile = await Http.GetFromJsonAsync<UserProfileDto>(endpoint);
+            userProfile = await profileResponse.Content.ReadFromJsonAsync<UserProfileDto>();
+            if (userProfile == null) return;
 
-                if (userProfile == null)
-                {
-                    return;
-                }
+            currentImageUrl = !string.IsNullOrEmpty(userProfile.ProfilePictureUrl)
+                ? $"{userProfile.ProfilePictureUrl}?v={DateTime.UtcNow.Ticks}"
+                : null;
 
-                if (!string.IsNullOrEmpty(userProfile.ProfilePictureUrl))
-                {
-                    currentImageUrl = $"{userProfile.ProfilePictureUrl}?v={DateTime.UtcNow.Ticks}";
-                }
-                else
-                {
-                    currentImageUrl = null;
-                }
+            previewImageUrl = null;
+            selectedImageBytes = null;
+            selectedImageName = null;
+            selectedImageContentType = null;
 
-                previewImageUrl = null;
-                selectedImageBytes = null;
-                selectedImageName = null;
-                selectedImageContentType = null;
+            isOwnProfile = UserId == null || UserId == Guid.Empty;
 
-                isOwnProfile = UserId == null || UserId == Guid.Empty;
+            if (!isOwnProfile && UserId.HasValue)
+                await CheckFollowStatus();
 
+            bool canSeePosts = isOwnProfile || !userProfile.PrivateProfile || isFollowing;
+
+            if (canSeePosts)
+            {
                 var postsEndpoint = isOwnProfile
                     ? "api/Post/my-posts"
                     : $"api/Post/user/{userProfile.Id}";
 
-                try
+                var postsRequest = await CreateRequest(HttpMethod.Get, postsEndpoint);
+                var postsResponse = await Http.SendAsync(postsRequest);
+
+                userPosts = postsResponse.IsSuccessStatusCode
+                    ? await postsResponse.Content.ReadFromJsonAsync<List<PostDto>>() ?? new()
+                    : new();
+            }
+            else
+            {
+                userPosts = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading profile: {ex.Message}", Severity.Error);
+            userProfile = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckFollowStatus()
+    {
+        try
+        {
+            var request = await CreateRequest(HttpMethod.Get, $"api/Follow/status/{UserId}");
+            var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<FollowStatusDto>();
+                isFollowing = result?.IsFollowing ?? false;
+
+                // ✅ If profile is PUBLIC, pending request makes no sense
+                // Auto-follow by sending follow request which will be converted
+                if (result?.IsPending == true && userProfile?.PrivateProfile == false)
                 {
-                    var postsResponse = await Http.GetAsync(postsEndpoint);
-                    if (postsResponse.IsSuccessStatusCode)
+                    // Profile changed to public — cancel old request and follow directly
+                    await CancelPendingAndFollow();
+                }
+                else
+                {
+                    followRequestPending = result?.IsPending ?? false;
+                }
+            }
+        }
+        catch
+        {
+            isFollowing = false;
+            followRequestPending = false;
+        }
+    }
+
+    private async Task CancelPendingAndFollow()
+    {
+        try
+        {
+            // Cancel the old pending request
+            var cancelReq = await CreateRequest(HttpMethod.Delete, $"api/Follow/request/{UserId}");
+            await Http.SendAsync(cancelReq);
+
+            // Now follow directly (public profile)
+            var followReq = await CreateRequest(HttpMethod.Post, $"api/Follow/{UserId}");
+            var followRes = await Http.SendAsync(followReq);
+
+            if (followRes.IsSuccessStatusCode)
+            {
+                var result = await followRes.Content.ReadFromJsonAsync<FollowResponseDto>();
+                isFollowing = result?.IsFollowing ?? false;
+                followRequestPending = false;
+                if (userProfile != null && isFollowing) userProfile.FollowerCount++;
+            }
+        }
+        catch
+        {
+            followRequestPending = false;
+        }
+    }
+
+    private async Task LoadUserPosts()
+    {
+        if (userProfile == null) return;
+        try
+        {
+            bool canSeePosts = isOwnProfile
+                || !userProfile.PrivateProfile  // public profile → always show posts
+                || isFollowing; if (!canSeePosts) { userPosts = new(); StateHasChanged(); return; }
+
+            var postsEndpoint = isOwnProfile
+                ? "api/Post/my-posts"
+                : $"api/Post/user/{userProfile.Id}";
+
+            var postsRequest = await CreateRequest(HttpMethod.Get, postsEndpoint);
+            var postsResponse = await Http.SendAsync(postsRequest);
+
+            userPosts = postsResponse.IsSuccessStatusCode
+                ? await postsResponse.Content.ReadFromJsonAsync<List<PostDto>>() ?? new()
+                : new();
+
+            StateHasChanged();
+        }
+        catch { userPosts = new(); }
+    }
+
+    private async Task ToggleFollow()
+    {
+        if (!UserId.HasValue || UserId == Guid.Empty) return;
+        isFollowLoading = true;
+
+        try
+        {
+            if (isFollowing)
+            {
+                var req = await CreateRequest(HttpMethod.Delete, $"api/Follow/{UserId}");
+                var res = await Http.SendAsync(req);
+                if (res.IsSuccessStatusCode)
+                {
+                    isFollowing = false;
+                    followRequestPending = false;
+                    if (userProfile != null) userProfile.FollowerCount--;
+                    await LoadUserPosts();
+                    Snackbar.Add("Unfollowed", Severity.Success);
+                    StateHasChanged();
+                }
+            }
+            else if (!followRequestPending)
+            {
+                var req = await CreateRequest(HttpMethod.Post, $"api/Follow/{UserId}");
+                var res = await Http.SendAsync(req);
+                if (res.IsSuccessStatusCode)
+                {
+                    var result = await res.Content.ReadFromJsonAsync<FollowResponseDto>();
+                    if (result?.IsPending == true)
                     {
-                        userPosts = await postsResponse.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
+                        followRequestPending = true;
+                        Snackbar.Add("Follow request sent!", Severity.Info);
                     }
                     else
                     {
-                        userPosts = new();
+                        isFollowing = true;
+                        if (userProfile != null) userProfile.FollowerCount++;
+                        await LoadUserPosts();
+                        Snackbar.Add("Followed!", Severity.Success);
                     }
                 }
-                catch
-                {
-                    userPosts = new();
-                }
-
-                if (!isOwnProfile && UserId.HasValue)
-                {
-                    await CheckFollowStatus();
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error loading profile: {ex.Message}", Severity.Error);
-                userProfile = null;
-            }
-            finally
-            {
-                isLoading = false;
-                StateHasChanged();
             }
         }
+        catch (Exception ex) { Snackbar.Add($"Error: {ex.Message}", Severity.Error); }
+        finally { isFollowLoading = false; StateHasChanged(); }
+    }
+
+    private async Task CancelFollowRequest()
+    {
+        var req = await CreateRequest(HttpMethod.Delete, $"api/Follow/request/{UserId}");
+        var res = await Http.SendAsync(req);
+        if (res.IsSuccessStatusCode)
+        {
+            followRequestPending = false;
+            Snackbar.Add("Follow request cancelled", Severity.Info);
+            StateHasChanged();
+        }
+    }
 
     private void EditPost(PostDto post)
     {
         isEditMode = true;
         showCreatePost = true;
         editingPostId = post.Id;
-
         newPost = new CreatePostDto
         {
             Title = post.Title,
             Content = post.Content,
             IsPublic = post.IsPublic
         };
-
-        // 🔥 CRITICAL: sync radio state
-        postVisibility = post.IsPublic
-            ? PostVisibility.Public
-            : PostVisibility.Private;
-
+        postVisibility = post.IsPublic ? PostVisibility.Public : PostVisibility.Private;
         StateHasChanged();
     }
 
-        private async Task OnProfileImageSelected(InputFileChangeEventArgs e)
+    private async Task OnProfileImageSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+
+        selectedImageBytes = ms.ToArray();
+        selectedImageContentType = file.ContentType;
+        selectedImageName = file.Name;
+        previewImageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(selectedImageBytes)}";
+        showCropDialog = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (showCropDialog && !string.IsNullOrEmpty(previewImageUrl))
         {
-            var file = e.File;
-            if (file == null) return;
+            await JS.InvokeVoidAsync("imageCropper.init", "cropImage");
+        }
+    }
 
-            using var ms = new MemoryStream();
-            await file.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+    private void OpenCropDialog()
+    {
+        showCropDialog = true;
+        StateHasChanged();
+    }
 
-            selectedImageBytes = ms.ToArray();
-            selectedImageContentType = file.ContentType;
-            selectedImageName = file.Name;
-
-            previewImageUrl =
-                $"data:{file.ContentType};base64,{Convert.ToBase64String(selectedImageBytes)}";
-
-            showCropDialog = false;
+    private async Task SaveProfileImage()
+    {
+        if (selectedImageBytes == null)
+        {
+            Snackbar.Add("Please upload an image", Severity.Warning);
+            return;
         }
 
-        protected override async Task OnAfterRenderAsync(bool firstRender)
+        isSavingImage = true;
+        StateHasChanged();
+
+        try
         {
-            if (showCropDialog && !string.IsNullOrEmpty(previewImageUrl))
+            var content = new MultipartFormDataContent();
+            var fileContent = new ByteArrayContent(selectedImageBytes);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(selectedImageContentType ?? "image/jpeg");
+            content.Add(fileContent, "file", selectedImageName ?? "profile.jpg");
+
+            var request = await CreateRequest(HttpMethod.Post, "api/User/profile-picture");
+            request.Content = content;
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
             {
-                await JS.InvokeVoidAsync("imageCropper.init", "cropImage");
+                var result = await response.Content.ReadFromJsonAsync<UploadResultDto>();
+                currentImageUrl = $"{result!.Url}?v={DateTime.UtcNow.Ticks}";
+                userProfile!.ProfilePictureUrl = currentImageUrl;
+                previewImageUrl = null;
+                selectedImageBytes = null;
+                showEditDialog = false;
+                Snackbar.Add("Profile picture updated", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Image upload failed", Severity.Error);
             }
         }
-
-        private void OpenCropDialog()
+        finally
         {
-            showCropDialog = true;
+            isSavingImage = false;
             StateHasChanged();
         }
+    }
 
-        private async Task SaveProfileImage()
+    private async Task DeletePost(Guid postId)
+    {
+        try
         {
-            if (selectedImageBytes == null)
+            var request = await CreateRequest(HttpMethod.Delete, $"api/Post/{postId}");
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
             {
-                Snackbar.Add("Please upload an image", Severity.Warning);
-                return;
-            }
-
-            isSavingImage = true;
-            StateHasChanged();
-
-            try
-            {
-                var content = new MultipartFormDataContent();
-                var fileContent = new ByteArrayContent(selectedImageBytes);
-
-                fileContent.Headers.ContentType =
-                    new System.Net.Http.Headers.MediaTypeHeaderValue(
-                        selectedImageContentType ?? "image/jpeg");
-
-                content.Add(fileContent, "file", selectedImageName ?? "profile.jpg");
-
-                var request = await CreateRequest(HttpMethod.Post, "api/User/profile-picture");
-                request.Content = content;
-
-                var response = await Http.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
+                Snackbar.Add("Post deleted successfully", Severity.Success);
+                if (userPosts != null)
                 {
-                    var result = await response.Content.ReadFromJsonAsync<UploadResultDto>();
-                    currentImageUrl = $"{result!.Url}?v={DateTime.UtcNow.Ticks}";
-                    userProfile!.ProfilePictureUrl = currentImageUrl;
-
-                    previewImageUrl = null;
-                    selectedImageBytes = null;
-                    showEditDialog = false;
-
-                    Snackbar.Add("Profile picture updated", Severity.Success);
+                    var removed = userPosts.RemoveAll(p => p.Id == postId);
+                    if (removed > 0 && userProfile != null)
+                        userProfile.PostCount--;
                 }
-                else
-                {
-                    Snackbar.Add("Image upload failed", Severity.Error);
-                }
-            }
-            finally
-            {
-                isSavingImage = false;
                 StateHasChanged();
             }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Delete failed: {error}", Severity.Error);
+            }
         }
-        private async Task DeletePost(Guid postId)
+        catch (Exception ex)
         {
-            try
-            {
-                var request = await CreateRequest(HttpMethod.Delete, $"api/Post/{postId}");
-                var response = await Http.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    Snackbar.Add("Post deleted successfully", Severity.Success);
-
-                    // Remove from UI instantly
-                    if (userPosts != null)
-                    {
-                        var removed = userPosts.RemoveAll(p => p.Id == postId);
-
-                        if (removed > 0 && userProfile != null)
-                        {
-                            userProfile.PostCount--;
-                        }
-                    }
-
-                    StateHasChanged();
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Snackbar.Add($"Delete failed: {error}", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
+    }
 
-   
+    private void CancelImageChange()
+    {
+        previewImageUrl = null;
+        selectedImageBytes = null;
+        selectedImageName = null;
+        selectedImageContentType = null;
+        showEditDialog = false;
+    }
 
-        private void CancelImageChange()
+    private async Task DeleteProfileImage()
+    {
+        try
         {
-            previewImageUrl = null;
-            selectedImageBytes = null;
-            selectedImageName = null;
-            selectedImageContentType = null;
-            showEditDialog = false;
-        }
+            var request = await CreateRequest(HttpMethod.Delete, "api/User/profile-picture");
+            var response = await Http.SendAsync(request);
 
-        private async Task DeleteProfileImage()
+            if (response.IsSuccessStatusCode)
+            {
+                currentImageUrl = null;
+                userProfile!.ProfilePictureUrl = null;
+                previewImageUrl = null;
+                selectedImageBytes = null;
+                selectedImageName = null;
+                selectedImageContentType = null;
+                Snackbar.Add("Profile picture deleted", Severity.Success);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Delete failed: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                var request = await CreateRequest(HttpMethod.Delete, "api/User/profile-picture");
-                var response = await Http.SendAsync(request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    currentImageUrl = null;
-                    userProfile!.ProfilePictureUrl = null;
-
-                    previewImageUrl = null;
-                    selectedImageBytes = null;
-                    selectedImageName = null;
-                    selectedImageContentType = null;
-
-                    Snackbar.Add("Profile picture deleted", Severity.Success);
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Snackbar.Add($"Delete failed: {error}", Severity.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
+    }
 
-        private async Task ConfirmCrop()
-        {
-            var base64 = await JS.InvokeAsync<string>("imageCropper.crop", 300);
-            if (string.IsNullOrEmpty(base64)) return;
+    private async Task ConfirmCrop()
+    {
+        var base64 = await JS.InvokeAsync<string>("imageCropper.crop", 300);
+        if (string.IsNullOrEmpty(base64)) return;
 
-            selectedImageBytes =
-                Convert.FromBase64String(base64.Split(',')[1]);
+        selectedImageBytes = Convert.FromBase64String(base64.Split(',')[1]);
+        selectedImageContentType = "image/jpeg";
+        selectedImageName = "profile.jpg";
+        previewImageUrl = base64;
+        currentImageUrl = base64;
+        showCropDialog = false;
+        await JS.InvokeVoidAsync("imageCropper.destroy");
+    }
 
-            selectedImageContentType = "image/jpeg";
-            selectedImageName = "profile.jpg";
-
-            previewImageUrl = base64;
-            currentImageUrl = base64;
-
-            showCropDialog = false;
-            await JS.InvokeVoidAsync("imageCropper.destroy");
-        }
-
-        private async Task CancelCrop()
-        {
-            showCropDialog = false;
-            previewImageUrl = null;
-
-            selectedImageBytes = null;
-            selectedImageName = null;
-            selectedImageContentType = null;
-
-            await JS.InvokeVoidAsync("imageCropper.destroy");
-        }
-
-        private async Task CheckFollowStatus()
-        {
-            try
-            {
-                var response = await Http.GetAsync($"api/Follow/status/{UserId}");
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = await response.Content.ReadFromJsonAsync<FollowStatusDto>();
-                    isFollowing = result?.IsFollowing ?? false;
-                }
-            }
-            catch
-            {
-                isFollowing = false;
-            }
-        }
-
-        private async Task LoadUserPosts()
-        {
-            if (userProfile == null) return;
-
-            try
-            {
-                var postsEndpoint = isOwnProfile
-                    ? "api/Post/my-posts"
-                    : $"api/Post/user/{userProfile.Id}";
-
-                var postsResponse = await Http.GetAsync(postsEndpoint);
-                if (postsResponse.IsSuccessStatusCode)
-                {
-                    userPosts = await postsResponse.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
-                }
-                else
-                {
-                    userPosts = new();
-                }
-
-                StateHasChanged();
-            }
-            catch
-            {
-                userPosts = new();
-            }
-        }
+    private async Task CancelCrop()
+    {
+        showCropDialog = false;
+        previewImageUrl = null;
+        selectedImageBytes = null;
+        selectedImageName = null;
+        selectedImageContentType = null;
+        await JS.InvokeVoidAsync("imageCropper.destroy");
+    }
 
     private void ToggleCreatePost()
     {
         showCreatePost = !showCreatePost;
-
         if (showCreatePost)
         {
             newPost = new CreatePostDto();
-            postVisibility = PostVisibility.Public; // ← Fix: set postVisibility instead
+            postVisibility = PostVisibility.Public;
         }
     }
 
-  
-    private void CancelCreatePost()
-    {
-        ResetPostForm();
-    }
+    private void CancelCreatePost() => ResetPostForm();
 
     private void ResetPostForm()
     {
         showCreatePost = false;
         isEditMode = false;
         editingPostId = null;
-
-        postVisibility = PostVisibility.Public; // ← Ensure this is here
+        postVisibility = PostVisibility.Public;
         newPost = new CreatePostDto();
     }
 
     private async Task PublishPost()
     {
-        Console.WriteLine($"RADIO VALUE = {postVisibility}");
-        if (string.IsNullOrWhiteSpace(newPost.Title) ||
-            string.IsNullOrWhiteSpace(newPost.Content))
+        if (string.IsNullOrWhiteSpace(newPost.Title) || string.IsNullOrWhiteSpace(newPost.Content))
         {
             Snackbar.Add("Please fill in all required fields", Severity.Warning);
             return;
         }
 
-        // CRITICAL: Set IsPublic based on the radio button selection
         newPost.IsPublic = postVisibility == PostVisibility.Public;
-
-        // Debug: Log what we're about to send
-        Console.WriteLine($"Publishing post - Title: {newPost.Title}, IsPublic: {newPost.IsPublic}, postVisibility: {postVisibility}");
-
         isPublishing = true;
 
         try
         {
-            HttpRequestMessage request;
-
-            if (isEditMode && editingPostId.HasValue)
-            {
-                request = await CreateRequest(HttpMethod.Put, $"api/Post/{editingPostId}");
-            }
-            else
-            {
-                request = await CreateRequest(HttpMethod.Post, "api/Post");
-            }
+            var request = isEditMode && editingPostId.HasValue
+                ? await CreateRequest(HttpMethod.Put, $"api/Post/{editingPostId}")
+                : await CreateRequest(HttpMethod.Post, "api/Post");
 
             request.Content = JsonContent.Create(newPost);
-
             var response = await Http.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
-                Snackbar.Add(
-                    isEditMode ? "Post updated successfully!" : "Post published successfully!",
-                    Severity.Success
-                );
-
+                Snackbar.Add(isEditMode ? "Post updated!" : "Post published!", Severity.Success);
                 ResetPostForm();
                 await LoadProfile();
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Failed to publish: {error}", Severity.Error);
+                Snackbar.Add($"Failed: {error}", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -861,174 +899,124 @@
         }
     }
 
-        private void OpenEditDialog()
+    private void OpenEditDialog()
+    {
+        editModel = new UpdateProfileDto
         {
-            editModel = new UpdateProfileDto
+            Username = userProfile?.Username ?? "",
+            Email = userProfile?.Email ?? "",
+            Bio = userProfile?.Bio ?? "",
+            Location = userProfile?.Location ?? "",
+            Website = userProfile?.Website ?? ""
+        };
+        showEditDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseEditDialog()
+    {
+        showEditDialog = false;
+        previewImageUrl = null;
+        selectedImageBytes = null;
+        selectedImageName = null;
+        selectedImageContentType = null;
+    }
+
+    private async Task SaveProfile()
+    {
+        isSaving = true;
+        try
+        {
+            var request = await CreateRequest(HttpMethod.Put, "api/User/profile");
+            request.Content = JsonContent.Create(editModel);
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
             {
-                Username = userProfile?.Username ?? "",
-                Email = userProfile?.Email ?? "",
-                Bio = userProfile?.Bio ?? "",
-                Location = userProfile?.Location ?? "",
-                Website = userProfile?.Website ?? ""
-            };
-
-            showEditDialog = true;
-            StateHasChanged();
-        }
-
-        private void CloseEditDialog()
-        {
-            showEditDialog = false;
-
-            previewImageUrl = null;
-            selectedImageBytes = null;
-            selectedImageName = null;
-            selectedImageContentType = null;
-        }
-
-        private async Task SaveProfile()
-        {
-            isSaving = true;
-            try
-            {
-                var request = await CreateRequest(HttpMethod.Put, "api/User/profile");
-                request.Content = JsonContent.Create(editModel);
-
-                var response = await Http.SendAsync(request);
-                if (response.IsSuccessStatusCode)
-                {
-                    Snackbar.Add("Profile updated successfully!", Severity.Success);
-                    CloseEditDialog();
-                    await LoadProfile();
-                }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Snackbar.Add($"Failed to update profile: {error}", Severity.Error);
-                }
+                Snackbar.Add("Profile updated successfully!", Severity.Success);
+                CloseEditDialog();
+                await LoadProfile();
             }
-            catch (Exception ex)
+            else
             {
-                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-            finally
-            {
-                isSaving = false;
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed: {error}", Severity.Error);
             }
         }
-
-        private async Task ToggleFollow()
+        catch (Exception ex)
         {
-            if (!UserId.HasValue || UserId == Guid.Empty)
-                return;
-
-            isFollowLoading = true;
-
-            try
-            {
-                var endpoint = $"api/Follow/{UserId}";
-                HttpResponseMessage response;
-
-                if (isFollowing)
-                {
-                    var request = await CreateRequest(HttpMethod.Delete, endpoint);
-                    response = await Http.SendAsync(request);
-                }
-                else
-                {
-                    var request = await CreateRequest(HttpMethod.Post, endpoint);
-                    response = await Http.SendAsync(request);
-                }
-
-                if (response.IsSuccessStatusCode)
-                {
-                    isFollowing = !isFollowing;
-                    Snackbar.Add(isFollowing ? "Followed successfully!" : "Unfollowed successfully!", Severity.Success);
-
-                    if (userProfile != null)
-                    {
-                        userProfile.FollowerCount += isFollowing ? 1 : -1;
-                    }
-
-                    await LoadUserPosts();
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-            finally
-            {
-                isFollowLoading = false;
-            }
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
-
-        private async Task<HttpRequestMessage> CreateRequest(HttpMethod method, string url)
+        finally
         {
-            var request = new HttpRequestMessage(method, url);
-            var token = await AuthState.GetToken();
-            if (!string.IsNullOrEmpty(token))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
-            return request;
-        }
-
-        private void ShowFollowers() => Snackbar.Add("Followers list coming soon!", Severity.Info);
-        private void ShowFollowing() => Snackbar.Add("Following list coming soon!", Severity.Info);
-        private string GetPostThumbnail(PostDto post) => $"https://via.placeholder.com/400x200/6366f1/ffffff?text={Uri.EscapeDataString(post.Title)}";
-        private string GetUserInitial() => userProfile != null && !string.IsNullOrWhiteSpace(userProfile.Username) ? userProfile.Username[0].ToString().ToUpper() : "?";
-
-        private async Task ViewPost(PostDto post)
-        {
-            var parameters = new DialogParameters
-            {
-                ["Post"] = post
-            };
-
-            await DialogService.ShowAsync<PostDetailsDialog>(
-                post.Title,
-                parameters,
-                new DialogOptions
-                {
-                    MaxWidth = MaxWidth.Medium,
-                    FullWidth = true,
-                    CloseButton = true
-                }
-            );
-        }
-
-        public class UserProfileDto
-        {
-            public Guid Id { get; set; }
-            public string Username { get; set; } = "";
-            public string Email { get; set; } = "";
-            public string? Bio { get; set; }
-            public string? Location { get; set; }
-            public string? Website { get; set; }
-            public string? ProfilePictureUrl { get; set; }
-            public int PostCount { get; set; }
-            public int FollowerCount { get; set; }
-            public int FollowingCount { get; set; }
-            public DateTime CreatedAt { get; set; }
-        }
-
-        public class UpdateProfileDto
-        {
-            public string Username { get; set; } = "";
-            public string Email { get; set; } = "";
-            public string? Bio { get; set; }
-            public string? Location { get; set; }
-            public string? Website { get; set; }
-        }
-
-        public class UploadResultDto
-        {
-            public string? Url { get; set; }
-        }
-
-        public class FollowStatusDto
-        {
-            public bool IsFollowing { get; set; }   
+            isSaving = false;
         }
     }
+
+    private async Task<HttpRequestMessage> CreateRequest(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        var token = await AuthState.GetToken();
+        if (!string.IsNullOrEmpty(token))
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    private void ShowFollowers() => Snackbar.Add("Followers list coming soon!", Severity.Info);
+    private void ShowFollowing() => Snackbar.Add("Following list coming soon!", Severity.Info);
+    private string GetUserInitial() => userProfile != null && !string.IsNullOrWhiteSpace(userProfile.Username)
+        ? userProfile.Username[0].ToString().ToUpper() : "?";
+
+    private async Task ViewPost(PostDto post)
+    {
+        var parameters = new DialogParameters { ["Post"] = post };
+        await DialogService.ShowAsync<PostDetailsDialog>(
+            post.Title,
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true }
+        );
+    }
+
+    public class UserProfileDto
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string? Bio { get; set; }
+        public string? Location { get; set; }
+        public string? Website { get; set; }
+        public string? ProfilePictureUrl { get; set; }
+        public int PostCount { get; set; }
+        public int FollowerCount { get; set; }
+        public int FollowingCount { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public bool PrivateProfile { get; set; }
+    }
+
+    public class FollowResponseDto
+    {
+        public bool IsFollowing { get; set; }
+        public bool IsPending { get; set; }
+    }
+
+    public class FollowStatusDto
+    {
+        public bool IsFollowing { get; set; }
+        public bool IsPending { get; set; }
+    }
+
+    public class UpdateProfileDto
+    {
+        public string Username { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string? Bio { get; set; }
+        public string? Location { get; set; }
+        public string? Website { get; set; }
+    }
+
+    public class UploadResultDto
+    {
+        public string? Url { get; set; }
+    }
+}
