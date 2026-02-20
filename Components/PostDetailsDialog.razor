@@ -1,32 +1,38 @@
-﻿@using Blog.Frontend.Models
+﻿@* PostDetailsDialog.razor *@
 @using MudBlazor
+@using Blog.Frontend.Models
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="3" Class="pb-4">
+        @* Author & Date *@
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+        </MudText>
 
-            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
-            </MudText>
+        <MudDivider Class="mb-3" />
 
-            <MudDivider />
+        @* ✅ Post Image *@
+        @if (!string.IsNullOrEmpty(Post.ImageUrl))
+        {
+            <MudImage Src="@Post.ImageUrl"
+                      Style="width:100%; max-height:400px; object-fit:contain; border-radius:8px;"
+                      Class="mb-3" />
+        }
 
-            <MudText Typo="Typo.body1">
-                @Post.Content
-            </MudText>
-        </MudStack>
+        @* Post Content *@
+        <MudText Typo="Typo.body1" Style="white-space:pre-wrap;">
+            @Post.Content
+        </MudText>
     </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter]
-    private IDialogReference DialogReference { get; set; } = default!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public PostDto Post { get; set; } = default!;
 
-    [Parameter]
-    public PostDto Post { get; set; } = default!;
-
-    private void Close()
-    {
-        DialogReference.Close();
-    }
+    void Close() => MudDialog.Close();
 }

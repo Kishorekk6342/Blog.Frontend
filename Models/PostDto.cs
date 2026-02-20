@@ -13,6 +13,8 @@
         public int LikesCount { get; set; }
         public int CommentsCount { get; set; }
         public bool IsLiked { get; set; }
+
+        public string? ImageUrl { get; set; }
     }
 
     public class CreatePostDto
@@ -20,6 +22,8 @@
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public bool IsPublic { get; set; }   // ❌ NO DEFAULT VALUE
+
+        public string? ImageUrl { get; set; }
     }
 
     public class UpdatePostDto
