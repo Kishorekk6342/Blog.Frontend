@@ -1,18 +1,23 @@
 ﻿@using MudBlazor
 @inject IDialogService DialogService
+@inject HttpClient Http
+@inject ISnackbar Snackbar
 
-<MudCard Elevation="2" Style="overflow:hidden;">
+<MudCard Elevation="2" Class="post-card" Style="overflow:hidden;">
 
-    @* Post Image *@
+    <!-- 🔥 IMAGE -->
     @if (!string.IsNullOrEmpty(Post.ImageUrl))
     {
-        <MudImage Src="@Post.ImageUrl"
+        <MudImage Src="@($"{Post.ImageUrl}?v={DateTime.UtcNow.Ticks}")"
                   Style="width:100%; height:200px; object-fit:cover;" />
     }
 
     <MudCardContent>
+
+        <!-- TITLE + VISIBILITY -->
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
             <MudText Typo="Typo.h6" Style="flex:1">@Post.Title</MudText>
+
             <MudChip T="string"
                      Size="Size.Small"
                      Color="@(Post.IsPublic ? Color.Success : Color.Warning)">
@@ -20,19 +25,47 @@
             </MudChip>
         </MudStack>
 
+        <!-- USER -->
         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
             By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
         </MudText>
 
+        <!-- CONTENT -->
         <MudText Typo="Typo.body1" Class="mb-3">
             @PreviewContent
         </MudText>
 
-        <MudButton Variant="Variant.Text"
-                   Color="Color.Primary"
-                   OnClick="OpenPostDialog">
-            Read More →
-        </MudButton>
+        <!-- 🔥 LIKE + COMMENT ROW -->
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+
+            <!-- ❤️ LIKE -->
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIconButton Icon="@(Post.IsLiked? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(Post.IsLiked ? Color.Error : Color.Default)"
+                               OnClick="ToggleLike" />
+
+                <MudText Typo="Typo.body2">
+                    @Post.LikesCount
+                </MudText>
+            </MudStack>
+
+            <!-- 💬 COMMENTS -->
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Outlined.ChatBubbleOutline" />
+                <MudText Typo="Typo.body2">
+                    @Post.CommentsCount
+                </MudText>
+            </MudStack>
+
+            <!-- READ MORE -->
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       OnClick="OpenPostDialog">
+                Read More →
+            </MudButton>
+
+        </MudStack>
+
     </MudCardContent>
 
 </MudCard>
@@ -48,6 +81,7 @@
     private async Task OpenPostDialog()
     {
         var parameters = new DialogParameters { ["Post"] = Post };
+
         await DialogService.ShowAsync<PostDetailsDialog>(
             Post.Title,
             parameters,
@@ -56,7 +90,30 @@
                 MaxWidth = MaxWidth.Medium,
                 FullWidth = true,
                 CloseButton = true
+            });
+    }
+
+    // ❤️ LIKE TOGGLE
+    private async Task ToggleLike()
+    {
+        try
+        {
+            var response = await Http.PostAsync($"api/Like/{Post.Id}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // 🔥 instant UI update (optimistic)
+                Post.IsLiked = !Post.IsLiked;
+                Post.LikesCount += Post.IsLiked ? 1 : -1;
             }
-        );
+            else
+            {
+                Snackbar.Add("Failed to like post", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
     }
 }

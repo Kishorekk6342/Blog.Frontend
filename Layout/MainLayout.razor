@@ -16,15 +16,16 @@
                            OnClick="ToggleDrawer" />
         }
 
+        <MudSpacer />  @* ✅ Spacer BEFORE title centers it *@
+
         <MudText Typo="Typo.h6" Class="flex-grow-1" Align="Align.Center">
             Blog App
         </MudText>
 
-        <MudSpacer />
+        <MudSpacer />  @* ✅ Second spacer pushes buttons to right *@
 
         @if (isLoggedIn)
         {
-            <!-- ✅ CORRECT MudMenu Structure -->
             <MudMenu AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
                      Dense="true"
@@ -42,12 +43,8 @@
                 </ActivatorContent>
 
                 <ChildContent>
-
                     <MudPaper Class="pa-3" Style="width:340px;">
-
-                        <MudText Typo="Typo.subtitle1" Class="mb-2">
-                            Notifications
-                        </MudText>
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Notifications</MudText>
 
                         @if (isLoadingNotifications)
                         {
@@ -55,22 +52,17 @@
                         }
                         else if (notifications == null || !notifications.Any())
                         {
-                            <MudText Color="Color.Secondary">
-                                No notifications
-                            </MudText>
+                            <MudText Color="Color.Secondary">No notifications</MudText>
                         }
                         else
                         {
                             @foreach (var n in notifications)
                             {
                                 <MudPaper Class="pa-2 mb-2" Elevation="1">
-
                                     <MudText Typo="Typo.body2"
                                              Style="@(!n.IsRead ? "font-weight:bold" : "")">
                                         @n.Message
                                     </MudText>
-
-
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                                         @GetTimeAgo(n.CreatedAt)
                                     </MudText>
@@ -78,35 +70,27 @@
                                     @if (n.Type == "FollowRequest" && n.RelatedId.HasValue)
                                     {
                                         <MudStack Row="true" Spacing="1" Class="mt-1">
-
-                                            <MudButton Size="Size.Small"
-                                                       Color="Color.Success"
+                                            <MudButton Size="Size.Small" Color="Color.Success"
                                                        OnClick="@(() => AcceptRequest(n.RelatedId.Value))">
                                                 Accept
                                             </MudButton>
-
-                                            <MudButton Size="Size.Small"
-                                                       Variant="Variant.Outlined"
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                                        Color="Color.Error"
                                                        OnClick="@(() => DeclineRequest(n.RelatedId.Value))">
                                                 Reject
                                             </MudButton>
-
                                         </MudStack>
                                     }
-
                                 </MudPaper>
                             }
                         }
-
                     </MudPaper>
-
                 </ChildContent>
-
             </MudMenu>
         }
         else
         {
+            @* ✅ These are now on the RIGHT side after the spacers *@
             <MudButton Variant="Variant.Text"
                        Color="Color.Inherit"
                        Href="/login">
@@ -153,6 +137,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await AuthState.InitializeAsync(); // ✅ Wait for token to load first
+
         AuthState.OnChange += HandleAuthChanged;
         isLoggedIn = AuthState.IsLoggedIn();
 
@@ -194,6 +180,11 @@
 
         if (isLoggedIn)
             _ = LoadNotifications();
+        else
+        {
+            // ✅ Redirect to login and replace history so back button won't work
+            Navigation.NavigateTo("/login", replace: true);
+        }
 
         InvokeAsync(StateHasChanged);
     }
