@@ -113,7 +113,6 @@
     private async Task LoadUsers()
     {
         isLoading = true;
-
         try
         {
             var token = await AuthState.GetToken();
@@ -138,8 +137,6 @@
                 Navigation.NavigateTo("/login");
                 return;
             }
-
-            response.EnsureSuccessStatusCode();
 
             users = await response.Content
                 .ReadFromJsonAsync<List<UserSearchResultDto>>() ?? new();

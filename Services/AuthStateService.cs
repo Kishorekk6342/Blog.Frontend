@@ -1,5 +1,6 @@
 ﻿using Microsoft.JSInterop;
 
+
 namespace Blog.Frontend.Services
 {
     public class AuthStateService
@@ -30,6 +31,46 @@ namespace Blog.Frontend.Services
 
             _initialized = true;
             NotifyStateChanged();
+        }
+
+        public async Task<Guid> GetUserId()
+        {
+            var token = await GetToken();
+
+            if (string.IsNullOrWhiteSpace(token))
+                return Guid.Empty;
+
+            try
+            {
+                var payload = token.Split('.')[1];
+
+                var jsonBytes = Convert.FromBase64String(PadBase64(payload));
+                var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+
+                var doc = System.Text.Json.JsonDocument.Parse(json);
+
+                // Most JWTs use "sub" as user id
+                if (doc.RootElement.TryGetProperty("sub", out var sub))
+                {
+                    return Guid.Parse(sub.GetString()!);
+                }
+            }
+            catch
+            {
+                // ignore errors
+            }
+
+            return Guid.Empty;
+        }
+
+        private string PadBase64(string base64)
+        {
+            int remainder = base64.Length % 4;
+            if (remainder == 2)
+                return base64 + "==";
+            if (remainder == 3)
+                return base64 + "=";
+            return base64;
         }
 
         public bool IsLoggedIn()
