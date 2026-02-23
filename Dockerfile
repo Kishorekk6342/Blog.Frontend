@@ -6,11 +6,8 @@ COPY . ./
 RUN dotnet restore
 RUN dotnet publish -c Release -o out
 
-# Run stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-WORKDIR /app
-COPY --from=build /app/out .
+# Serve static files using nginx
+FROM nginx:alpine
+COPY --from=build /app/out/wwwroot /usr/share/nginx/html
 
-EXPOSE 5001
-
-ENTRYPOINT ["dotnet", "Blog.Frontend.dll"]
+EXPOSE 80
