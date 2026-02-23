@@ -1,12 +1,13 @@
 ﻿@inherits LayoutComponentBase
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
 @implements IDisposable
 
 <MudLayout>
 
-    <!-- TOP APP BAR -->
     <MudAppBar Elevation="1" Color="Color.Primary">
+
         @if (isLoggedIn)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
@@ -15,15 +16,84 @@
                            OnClick="ToggleDrawer" />
         }
 
+        <MudSpacer />  @* ✅ Spacer BEFORE title centers it *@
+
         <MudText Typo="Typo.h6" Class="flex-grow-1" Align="Align.Center">
             Blog App
         </MudText>
 
-        <MudSpacer />
+        <MudSpacer />  @* ✅ Second spacer pushes buttons to right *@
 
-        @if (!isLoggedIn)
+        @if (isLoggedIn)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">
+            <MudMenu AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true"
+                     OnOpenChanged="OnNotificationMenuChanged">
+
+                <ActivatorContent>
+                    <MudBadge Content="@notificationCount"
+                              Visible="@(notificationCount > 0)"
+                              Color="Color.Error"
+                              Overlap="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                                       Color="Color.Inherit"
+                                       OnClick="@OnNotificationClicked" />
+                    </MudBadge>
+                </ActivatorContent>
+
+                <ChildContent>
+                    <MudPaper Class="pa-3" Style="width:340px;">
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Notifications</MudText>
+
+                        @if (isLoadingNotifications)
+                        {
+                            <MudProgressCircular Indeterminate />
+                        }
+                        else if (notifications == null || !notifications.Any())
+                        {
+                            <MudText Color="Color.Secondary">No notifications</MudText>
+                        }
+                        else
+                        {
+                            @foreach (var n in notifications)
+                            {
+                                <MudPaper Class="pa-2 mb-2" Elevation="1">
+                                    <MudText Typo="Typo.body2"
+                                             Style="@(!n.IsRead ? "font-weight:bold" : "")">
+                                        @n.Message
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @GetTimeAgo(n.CreatedAt)
+                                    </MudText>
+
+                                    @if (n.Type == "FollowRequest" && n.RelatedId.HasValue)
+                                    {
+                                        <MudStack Row="true" Spacing="1" Class="mt-1">
+                                            <MudButton Size="Size.Small" Color="Color.Success"
+                                                       OnClick="@(() => AcceptRequest(n.RelatedId.Value))">
+                                                Accept
+                                            </MudButton>
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeclineRequest(n.RelatedId.Value))">
+                                                Reject
+                                            </MudButton>
+                                        </MudStack>
+                                    }
+                                </MudPaper>
+                            }
+                        }
+                    </MudPaper>
+                </ChildContent>
+            </MudMenu>
+        }
+        else
+        {
+            @* ✅ These are now on the RIGHT side after the spacers *@
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Inherit"
+                       Href="/login">
                 Login
             </MudButton>
 
@@ -34,9 +104,9 @@
                 Sign Up
             </MudButton>
         }
+
     </MudAppBar>
 
-    <!-- SIDE DRAWER -->
     @if (isLoggedIn)
     {
         <MudDrawer @bind-Open="drawerOpen"
@@ -51,7 +121,6 @@
         </MudDrawer>
     }
 
-    <!-- MAIN CONTENT -->
     <MudMainContent>
         @Body
     </MudMainContent>
@@ -59,20 +128,169 @@
 </MudLayout>
 
 @code {
+
     private bool drawerOpen;
     private bool isLoggedIn;
+    private bool isLoadingNotifications = false;
+    private int notificationCount = 0;
+    private List<NotificationDto>? notifications;
 
     protected override async Task OnInitializedAsync()
     {
+        await AuthState.InitializeAsync(); // ✅ Wait for token to load first
+
         AuthState.OnChange += HandleAuthChanged;
-        await AuthState.InitializeAsync();
         isLoggedIn = AuthState.IsLoggedIn();
+
+        if (isLoggedIn)
+            await LoadNotifications();
+    }
+
+    private async Task OnNotificationClicked()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Put, "api/Notification/mark-all-read");
+
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            await Http.SendAsync(request);
+
+            // ✅ update UI immediately
+            if (notifications != null)
+            {
+                foreach (var n in notifications)
+                    n.IsRead = true;
+            }
+
+            notificationCount = 0;
+
+            StateHasChanged();
+        }
+        catch { }
     }
 
     private void HandleAuthChanged()
     {
         isLoggedIn = AuthState.IsLoggedIn();
+
+        if (isLoggedIn)
+            _ = LoadNotifications();
+        else
+        {
+            // ✅ Redirect to login and replace history so back button won't work
+            Navigation.NavigateTo("/login", replace: true);
+        }
+
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnNotificationMenuChanged(bool open)
+    {
+        if (open && notifications != null && notifications.Any(n => !n.IsRead))
+        {
+            try
+            {
+                var token = await AuthState.GetToken();
+
+                var request = new HttpRequestMessage(
+                    HttpMethod.Put, "api/Notification/mark-all-read");
+
+                request.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+                await Http.SendAsync(request);
+
+                // ✅ Update UI instantly
+                foreach (var n in notifications)
+                    n.IsRead = true;
+
+                notificationCount = 0;
+
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    // ✅ THIS WAS MISSING (caused your errors)
+    private async Task LoadNotifications()
+    {
+        isLoadingNotifications = true;
+
+        try
+        {
+            var token = await AuthState.GetToken();
+            if (string.IsNullOrEmpty(token)) return;
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/Notification");
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                notifications = await response.Content
+                    .ReadFromJsonAsync<List<NotificationDto>>();
+
+                notificationCount = notifications?
+                    .Count(n => !n.IsRead) ?? 0;
+            }
+        }
+        catch { }
+        finally
+        {
+            isLoadingNotifications = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AcceptRequest(Guid requesterId)
+    {
+        var token = await AuthState.GetToken();
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Post, $"api/Follow/accept/{requesterId}");
+
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        if ((await Http.SendAsync(request)).IsSuccessStatusCode)
+        {
+            await LoadNotifications();
+        }
+    }
+
+    private async Task DeclineRequest(Guid requesterId)
+    {
+        var token = await AuthState.GetToken();
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Delete, $"api/Follow/decline/{requesterId}");
+
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        if ((await Http.SendAsync(request)).IsSuccessStatusCode)
+        {
+            await LoadNotifications();
+        }
+    }
+
+    private string GetTimeAgo(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt;
+
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+
+        return $"{(int)diff.TotalDays}d ago";
     }
 
     private void ToggleDrawer() => drawerOpen = !drawerOpen;
@@ -80,5 +298,15 @@
     public void Dispose()
     {
         AuthState.OnChange -= HandleAuthChanged;
+    }       
+
+    public class NotificationDto
+    {
+        public Guid Id { get; set; }
+        public string Message { get; set; } = "";
+        public string Type { get; set; } = "";
+        public Guid? RelatedId { get; set; }
+        public bool IsRead { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

@@ -13,106 +13,140 @@ namespace Blog.Frontend.Services
             _http = http;
         }
 
+        // ============================
+        // 🔧 HELPER (SAFE AUTH HANDLING)
+        // ============================
+        private HttpRequestMessage CreateRequest(
+            HttpMethod method,
+            string url,
+            string? token = null)
+        {
+            var request = new HttpRequestMessage(method, url);
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            return request;
+        }
+
+        // ============================
         // 🌍 PUBLIC HOME FEED
+        // ============================
         public async Task<List<PostDto>> GetHomeFeed()
         {
-            // 🔥 Clear auth for public feed
-            _http.DefaultRequestHeaders.Authorization = null;
-            var response = await _http.GetAsync("api/Post/feed?page=1&pageSize=20");
+            var request = CreateRequest(
+                HttpMethod.Get,
+                "api/Post/feed?page=1&pageSize=20"
+            );
+
+            var response = await _http.SendAsync(request);
+
             if (!response.IsSuccessStatusCode)
                 return new();
-            return await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
+
+            return await response.Content
+                .ReadFromJsonAsync<List<PostDto>>() ?? new();
         }
 
-        // ✅ CREATE POST (THIS WAS MISSING!)
-        public async Task<bool> CreatePost(CreatePostDto dto, string token)
+        // ============================
+        // ✍️ CREATE POST
+        // ============================
+        public async Task<bool> CreatePost(
+            CreatePostDto dto,
+            string token)
         {
-            try
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+            var request = CreateRequest(
+                HttpMethod.Post,
+                "api/Post",
+                token
+            );
 
-                var response = await _http.PostAsJsonAsync("api/Post", dto);
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
         }
 
-        // Get user's own posts
+        // ============================
+        // 👤 GET MY POSTS
+        // ============================
         public async Task<List<PostDto>> GetMyPosts(string token)
         {
-            try
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+            var request = CreateRequest(
+                HttpMethod.Get,
+                "api/Post/my-posts",
+                token
+            );
 
-                var response = await _http.GetAsync("api/Post/my-posts");
-                if (!response.IsSuccessStatusCode)
-                    return new();
+            var response = await _http.SendAsync(request);
 
-                return await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
-            }
-            catch
-            {
+            if (!response.IsSuccessStatusCode)
                 return new();
-            }
+
+            return await response.Content
+                .ReadFromJsonAsync<List<PostDto>>() ?? new();
         }
 
-        // Get specific user's posts
-        public async Task<List<PostDto>> GetUserPosts(Guid userId, string token)
+        // ============================
+        // 👥 GET USER POSTS
+        // ============================
+        public async Task<List<PostDto>> GetUserPosts(
+            Guid userId,
+            string token)
         {
-            try
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+            var request = CreateRequest(
+                HttpMethod.Get,
+                $"api/Post/user/{userId}",
+                token
+            );
 
-                var response = await _http.GetAsync($"api/Post/user/{userId}");
-                if (!response.IsSuccessStatusCode)
-                    return new();
+            var response = await _http.SendAsync(request);
 
-                return await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
-            }
-            catch
-            {
+            if (!response.IsSuccessStatusCode)
                 return new();
-            }
+
+            return await response.Content
+                .ReadFromJsonAsync<List<PostDto>>() ?? new();
         }
 
-        // Update post
-        public async Task<bool> UpdatePost(Guid postId, UpdatePostDto dto, string token)
+        // ============================
+        // ✏️ UPDATE POST
+        // ============================
+        public async Task<bool> UpdatePost(
+            Guid postId,
+            UpdatePostDto dto,
+            string token)
         {
-            try
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+            var request = CreateRequest(
+                HttpMethod.Put,
+                $"api/Post/{postId}",
+                token
+            );
 
-                var response = await _http.PutAsJsonAsync($"api/Post/{postId}", dto);
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
+            request.Content = JsonContent.Create(dto);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
         }
 
-        // Delete post
-        public async Task<bool> DeletePost(Guid postId, string token)
+        // ============================
+        // 🗑️ DELETE POST
+        // ============================
+        public async Task<bool> DeletePost(
+            Guid postId,
+            string token)
         {
-            try
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+            var request = CreateRequest(
+                HttpMethod.Delete,
+                $"api/Post/{postId}",
+                token
+            );
 
-                var response = await _http.DeleteAsync($"api/Post/{postId}");
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
         }
     }
 }

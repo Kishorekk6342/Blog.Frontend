@@ -1,32 +1,177 @@
-﻿@using Blog.Frontend.Models
-@using MudBlazor
+﻿@using MudBlazor
+@using Blog.Frontend.Models
+@inject HttpClient Http
+@inject AuthStateService AuthState
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="3" Class="pb-4">
 
-            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
-            </MudText>
+        <!-- 🔹 AUTHOR + DATE -->
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+            By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
+        </MudText>
 
-            <MudDivider />
+        <MudDivider Class="mb-3" />
 
-            <MudText Typo="Typo.body1">
-                @Post.Content
-            </MudText>
+        <!-- 🔹 IMAGE -->
+        @if (!string.IsNullOrEmpty(Post.ImageUrl))
+        {
+            <MudImage Src="@($"{Post.ImageUrl}?v={DateTime.UtcNow.Ticks}")"
+                      Style="width:100%; max-height:400px; object-fit:contain; border-radius:8px;"
+                      Class="mb-3" />
+        }
+
+        <!-- 🔹 CONTENT -->
+        <MudText Typo="Typo.body1" Style="white-space:pre-wrap;">
+            @Post.Content
+        </MudText>
+
+        <!-- 🔥 COMMENTS SECTION -->
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6">Comments</MudText>
+
+        <!-- ✏️ ADD COMMENT -->
+        <MudStack Row="true" Spacing="2" Class="mt-2">
+            <MudTextField @bind-Value="newComment"
+                          Placeholder="Write a comment..."
+                          Variant="Variant.Outlined"
+                          FullWidth="true" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="AddComment">
+                Post
+            </MudButton>
         </MudStack>
+
+        <!-- 📜 COMMENT LIST -->
+        <MudStack Class="mt-3" Spacing="2">
+
+            @if (comments == null)
+            {
+                <MudProgressCircular Indeterminate="true" />
+            }
+            else if (!comments.Any())
+            {
+                <MudText Color="Color.Secondary">No comments yet</MudText>
+            }
+            else
+            {
+                @foreach (var c in comments)
+                {
+                    <MudPaper Class="pa-3 d-flex justify-space-between align-start">
+
+                        <div>
+                            <MudText Typo="Typo.body2">
+                                <b>@c.Username</b>
+                            </MudText>
+
+                            <MudText Typo="Typo.body2">
+                                @c.Content
+                            </MudText>
+
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @c.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                            </MudText>
+                        </div>
+
+                        <!-- 🗑 DELETE (ONLY OWNER) -->
+                        @if (c.UserId == currentUserId)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           OnClick="() => DeleteComment(c.Id)" />
+                        }
+
+                    </MudPaper>
+                }
+            }
+
+        </MudStack>
+
     </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter]
-    private IDialogReference DialogReference { get; set; } = default!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public PostDto Post { get; set; } = default!;
 
-    [Parameter]
-    public PostDto Post { get; set; } = default!;
+    private List<CommentDto>? comments;
+    private string newComment = "";
+    private Guid currentUserId;
 
-    private void Close()
+    protected override async Task OnInitializedAsync()
     {
-        DialogReference.Close();
+        try
+        {
+            currentUserId = await AuthState.GetUserId(); // your helper
+            await LoadComments();
+        }
+        catch { }
     }
+
+    private async Task LoadComments()
+    {
+        try
+        {
+            comments = await Http.GetFromJsonAsync<List<CommentDto>>(
+                $"api/Post/comments/{Post.Id}") ?? new();
+        }
+        catch
+        {
+            comments = new();
+        }
+    }
+
+    private async Task AddComment()
+    {
+        if (string.IsNullOrWhiteSpace(newComment))
+            return;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/Post/comment/{Post.Id}",
+                newComment);
+
+            if (res.IsSuccessStatusCode)
+            {
+                newComment = "";
+                await LoadComments();
+            }
+            else
+            {
+                Snackbar.Add("Failed to add comment", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteComment(Guid commentId)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync($"api/Post/comment/{commentId}");
+
+            if (res.IsSuccessStatusCode)
+            {
+                await LoadComments();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    void Close() => MudDialog.Close();
 }

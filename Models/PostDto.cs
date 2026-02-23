@@ -13,6 +13,8 @@
         public int LikesCount { get; set; }
         public int CommentsCount { get; set; }
         public bool IsLiked { get; set; }
+
+        public string? ImageUrl { get; set; }
     }
 
     public class CreatePostDto
@@ -20,6 +22,8 @@
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public bool IsPublic { get; set; }   // ❌ NO DEFAULT VALUE
+
+        public string? ImageUrl { get; set; }
     }
 
     public class UpdatePostDto
@@ -35,5 +39,13 @@
         public string Username { get; set; } = "";
         public string? Bio { get; set; }
         public string? ProfilePictureUrl { get; set; }
+    }
+    public class CommentDto
+    {
+        public Guid Id { get; set; }
+        public string Content { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public Guid UserId { get; set; }
+        public string Username { get; set; } = "";
     }
 }
