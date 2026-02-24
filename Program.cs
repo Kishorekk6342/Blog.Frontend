@@ -13,7 +13,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // 🔑 HttpClient – MUST point to backend API
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("https://blog-backend-a5sf.onrender.com")
+    BaseAddress = new Uri("https://blog-backend-a5sf.onrender.com/")
 });
 
 // MudBlazor
