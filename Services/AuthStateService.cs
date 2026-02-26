@@ -5,7 +5,7 @@ namespace Blog.Frontend.Services
 {
     public class AuthStateService
     {
-        private const string TokenKey = "authToken";
+        private const string TokenKey = "token";
         private readonly IJSRuntime _js;
 
         private string? _token;

@@ -85,8 +85,10 @@
             if (!string.IsNullOrWhiteSpace(token))
             {
                 await AuthState.SetToken(token);
+
                 Snackbar.Add("Login successful", Severity.Success);
-                Navigation.NavigateTo("/");
+
+                Navigation.NavigateTo("/", true); // ✅ FIX HERE
             }
             else
             {
@@ -98,4 +100,4 @@
             isLoading = false;
         }
     }
-}
+    }
