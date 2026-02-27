@@ -2,11 +2,14 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 
+
 namespace Blog.Frontend.Services
 {
     public class PostService
     {
         private readonly HttpClient _http;
+        public event Action? OnPostChanged; // 🔥 ADD THIS
+
 
         public PostService(HttpClient http)
         {
@@ -35,11 +38,15 @@ namespace Blog.Frontend.Services
         // ============================
         // 🌍 PUBLIC HOME FEED
         // ============================
-        public async Task<List<PostDto>> GetHomeFeed()
+        // ============================
+        // 🌍 HOME FEED (Auth-aware)
+        // ============================
+        public async Task<List<PostDto>> GetHomeFeed(string? token = null)
         {
             var request = CreateRequest(
                 HttpMethod.Get,
-                "api/Post/feed?page=1&pageSize=20"
+                "api/Post/feed?page=1&pageSize=20",
+                token  // ✅ Pass token so backend knows who you are
             );
 
             var response = await _http.SendAsync(request);
@@ -51,22 +58,22 @@ namespace Blog.Frontend.Services
                 .ReadFromJsonAsync<List<PostDto>>() ?? new();
         }
 
-        // ============================
-        // ✍️ CREATE POST
-        // ============================
-        public async Task<bool> CreatePost(
-            CreatePostDto dto,
-            string token)
-        {
-            var request = CreateRequest(
-                HttpMethod.Post,
-                "api/Post",
-                token
-            );
 
+
+        // ============================
+        // ✍️
+        // 
+        // ============================
+        public async Task<bool> CreatePost(CreatePostDto dto, string token)
+        {
+            var request = CreateRequest(HttpMethod.Post, "api/Post", token);
             request.Content = JsonContent.Create(dto);
 
             var response = await _http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+                NotifyPostChanged(); // ✅ IMPORTANT
+
             return response.IsSuccessStatusCode;
         }
 
@@ -115,21 +122,21 @@ namespace Blog.Frontend.Services
         // ============================
         // ✏️ UPDATE POST
         // ============================
-        public async Task<bool> UpdatePost(
-            Guid postId,
-            UpdatePostDto dto,
-            string token)
+        public async Task<bool> UpdatePost(Guid postId, UpdatePostDto dto, string token)
         {
-            var request = CreateRequest(
-                HttpMethod.Put,
-                $"api/Post/{postId}",
-                token
-            );
-
+            var request = CreateRequest(HttpMethod.Put, $"api/Post/{postId}", token);
             request.Content = JsonContent.Create(dto);
 
             var response = await _http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+                NotifyPostChanged(); // ✅ IMPORTANT
+
             return response.IsSuccessStatusCode;
+        }
+        public void NotifyPostChanged()
+        {
+            OnPostChanged?.Invoke();
         }
 
         // ============================

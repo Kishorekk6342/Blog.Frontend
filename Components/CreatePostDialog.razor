@@ -1,0 +1,225 @@
+﻿@using Blog.Frontend.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject AuthStateService AuthState
+@inject PostService PostService
+
+<MudDialog MaxWidth="MaxWidth.Large" FullWidth="true">
+
+    <DialogContent>
+
+        <MudStack Spacing="4">
+
+         
+
+            <!-- TITLE -->
+            <MudTextField @bind-Value="Model.Title"
+                          Label="Title"
+                          Variant="Variant.Outlined"
+                          FullWidth="true" />
+
+            <!-- CONTENT -->
+            <MudTextField @bind-Value="Model.Content"
+                          Label="Write your story..."
+                          Variant="Variant.Outlined"
+                          Lines="8"
+                          FullWidth="true" />
+
+            <!-- IMAGE (OPTIONAL) -->
+            <MudPaper Class="pa-4" Style="border:2px dashed #ddd; border-radius:12px;">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body2">📷 Upload Image </MudText>
+
+                    <InputFile OnChange="OnImageSelected" />
+
+                    @if (!string.IsNullOrEmpty(ImagePreview))
+                    {
+                        <MudStack>
+                            <MudImage Src="@ImagePreview"
+                                      Style="max-height:250px; border-radius:12px;" />
+                            <MudButton Size="Size.Small"
+                                       Color="Color.Error"
+                                       Variant="Variant.Text"
+                                       OnClick="RemoveImage">
+                                ✕ Remove Image
+                            </MudButton>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <!-- VISIBILITY -->
+            <MudRadioGroup T="bool" @bind-Value="Model.IsPublic">
+                    <MudRadio Value="true"> 🌍 Public</MudRadio>
+                    <MudRadio Value="false"> 🔒 Private</MudRadio>
+            </MudRadioGroup>
+
+        </MudStack>
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="isSubmitting">Cancel</MudButton>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="isSubmitting"
+                   OnClick="Submit">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <text>@(IsEditMode ? "Updating..." : "Publishing...")</text>
+            }
+            else
+            {
+                <text>@(IsEditMode ? "Update" : "Publish")</text>
+            }
+        </MudButton>
+    </DialogActions>
+
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public CreatePostDto Model { get; set; } = new();
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public Guid? PostId { get; set; }
+
+    private IBrowserFile? file;
+    private string? ImagePreview;
+    private bool isSubmitting = false;
+
+    private async Task OnImageSelected(InputFileChangeEventArgs e)
+    {
+        file = e.File;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(ms);
+
+        ImagePreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+    }
+
+    private void RemoveImage()
+    {
+        file = null;
+        ImagePreview = null;
+        Model.ImageUrl = null;
+    }
+
+    private async Task<string?> UploadImage()
+    {
+        if (file == null) return null;
+
+        var content = new MultipartFormDataContent();
+
+        var streamContent = new StreamContent(file.OpenReadStream(5 * 1024 * 1024));
+        streamContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+        content.Add(streamContent, "file", file.Name);
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/Post/upload-image");
+        request.Content = content;
+
+        var token = await AuthState.GetToken();
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        }
+
+        var response = await Http.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<UploadResultDto>();
+            return result?.Url;
+        }
+
+        var errorText = await response.Content.ReadAsStringAsync();
+        Console.WriteLine("UPLOAD FAILED: " + errorText);
+        return null;
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Model.Title) ||
+            string.IsNullOrWhiteSpace(Model.Content))
+        {
+            Snackbar.Add("Title and Content are required", Severity.Warning);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            // Only upload if a file was selected
+            if (file != null)
+            {
+                var imageUrl = await UploadImage();
+
+                if (string.IsNullOrEmpty(imageUrl))
+                {
+                    Snackbar.Add("Image upload failed ❌", Severity.Error);
+                    return;
+                }
+
+                Model.ImageUrl = imageUrl;
+            }
+            // If no file selected, keep existing ImageUrl (for edits) or null (for new posts)
+
+            var token = await AuthState.GetToken();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                Snackbar.Add("Unauthorized ❌", Severity.Error);
+                return;
+            }
+
+            bool success;
+
+            if (IsEditMode && PostId.HasValue)
+            {
+                var updateDto = new UpdatePostDto
+                {
+                    Title = Model.Title,
+                    Content = Model.Content,
+                    IsPublic = Model.IsPublic,
+                    ImageUrl = Model.ImageUrl
+                };
+
+                success = await PostService.UpdatePost(PostId.Value, updateDto, token);
+            }
+            else
+            {
+                success = await PostService.CreatePost(Model, token);
+            }
+
+            if (success)
+            {
+                MudDialog.Close(DialogResult.Ok(IsEditMode ? "updated" : "created"));
+            }
+            else
+            {
+                Snackbar.Add("Failed to save post ❌", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    public class UploadResultDto
+    {
+        public string? Url { get; set; }
+    }
+}

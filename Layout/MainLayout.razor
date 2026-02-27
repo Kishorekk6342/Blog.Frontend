@@ -3,6 +3,9 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @implements IDisposable
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject PostService PostService
 
 <MudLayout>
 
@@ -26,6 +29,14 @@
 
         @if (isLoggedIn)
         {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Class="mr-2"
+                       OnClick="GoToCreatePost">
+                Write Blog
+            </MudButton>
+
             <MudMenu AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
                      Dense="true"
@@ -144,6 +155,30 @@
 
         if (isLoggedIn)
             await LoadNotifications();
+    }
+
+    private async Task GoToCreatePost()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Model"] = new CreatePostDto { IsPublic = true },
+            ["IsEditMode"] = false
+        };
+
+        var dialog = await DialogService.ShowAsync<CreatePostDialog>(
+            "Create Post",
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium });
+
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Post published successfully 🚀", Severity.Success);
+
+            // ❌ REMOVE THIS
+            // PostService.NotifyPostChanged();
+        }
     }
 
     private async Task OnNotificationClicked()

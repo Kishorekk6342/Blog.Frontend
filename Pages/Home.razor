@@ -1,15 +1,17 @@
 ﻿@page "/"
 @using Blog.Frontend.Models
-@inject HttpClient Http
+@inject PostService PostService
 @inject AuthStateService AuthState
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
-
     <MudDivider Class="mb-4" />
     @if (loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <MudStack AlignItems="AlignItems.Center" Class="mt-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </MudStack>
     }
     else if (posts.Count == 0)
     {
@@ -22,7 +24,7 @@
         <MudStack Spacing="3">
             @foreach (var post in posts)
             {
-                <PostCard Post="post" />
+                <PostCard @key="post.Id" Post="post" />
             }
         </MudStack>
     }
@@ -32,54 +34,52 @@
     private List<PostDto> posts = new();
     private bool loading = true;
 
+
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadFeed();
+        PostService.OnPostChanged += OnPostChanged;
+        await LoadFeed(true); // ✅ only first time show loader
     }
 
-    private async Task LoadFeed()
+    private void OnPostChanged()
     {
-        loading = true;
+        InvokeAsync(async () =>
+        {
+            await LoadFeed(false); // ❌ no loader → no flicker
+        });
+    }
+
+    private async Task LoadFeed(bool showLoader = false)
+    {
+        if (showLoader)
+        {
+            loading = true;
+            StateHasChanged();
+        }
 
         try
         {
             var token = await AuthState.GetToken();
+            var newPosts = await PostService.GetHomeFeed(token);
 
-            if (!string.IsNullOrEmpty(token))
-            {
-                Http.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
-
-            // Try to get personalized feed (includes private posts from followed users + your own posts)
-            var response = await Http.GetAsync("api/Post/feed");
-
-            if (response.IsSuccessStatusCode)
-            {
-                posts = await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
-            }
-            else
-            {
-                // Fallback: get only public posts
-                response = await Http.GetAsync("api/Post/public");
-                if (response.IsSuccessStatusCode)
-                {
-                    posts = await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
-                }
-                else
-                {
-                    posts = new();
-                }
-            }
+            posts = newPosts; // ✅ replace AFTER data arrives
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading feed: {ex.Message}", Severity.Error);
-            posts = new();
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
+    }
+
+    // Called by PostService event — marshals to UI thread properly
+    
+    public void Dispose()
+    {
+        PostService.OnPostChanged -= OnPostChanged;
     }
 }
