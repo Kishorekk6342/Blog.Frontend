@@ -1,0 +1,52 @@
+﻿@using MudBlazor
+
+<MudCard Elevation="0"
+         Class="pa-4 mb-3"
+         Style="border-radius:10px;
+                min-height:190px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <MudGrid GutterSize="3">
+
+        <!-- IMAGE -->
+        <MudItem xs="12" sm="4">
+            <MudSkeleton Height="170px" Width="100%" Animation="Animation.Wave" />
+        </MudItem>
+
+        <!-- CONTENT -->
+        <MudItem xs="12" sm="8">
+
+            <MudStack Spacing="2">
+
+                <!-- TITLE -->
+                <MudSkeleton Height="20px" Width="60%" />
+
+                <!-- AUTHOR -->
+                <MudSkeleton Height="14px" Width="40%" />
+
+                <!-- CONTENT LINES -->
+                <MudSkeleton Height="12px" Width="90%" />
+                <MudSkeleton Height="12px" Width="85%" />
+                <MudSkeleton Height="12px" Width="70%" />
+
+            </MudStack>
+
+            <!-- ACTIONS -->
+            <div style="margin-top:20px;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+
+                    <MudStack Row="true" Spacing="2">
+                        <MudSkeleton Height="24px" Width="60px" />
+                        <MudSkeleton Height="20px" Width="40px" />
+                    </MudStack>
+
+                    <MudSkeleton Height="30px" Width="100px" />
+
+                </MudStack>
+            </div>
+
+        </MudItem>
+
+    </MudGrid>
+
+</MudCard>

@@ -31,10 +31,25 @@
             <MudButton Variant="Variant.Filled"
                        Style="background-color:white; color:#424242;"
                        StartIcon="@Icons.Material.Filled.Add"
-                       Class="mr-2"
+                       Class="mr-3"
                        OnClick="GoToCreatePost">
                 Write Blog
             </MudButton>
+
+            <MudStack Row="true"
+                      AlignItems="AlignItems.Center"
+                      Spacing="2"
+                      Class="mx-3">
+
+                <MudAvatar Size="Size.Small" Style="background:#9e9e9e; color:white;">
+                    @GetUserInitial()
+                </MudAvatar>
+
+                <MudText Typo="Typo.body2" Style="font-weight:500;">
+                    @username
+                </MudText>
+
+            </MudStack>
 
             <MudMenu AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
@@ -144,16 +159,64 @@
     private bool isLoadingNotifications = false;
     private int notificationCount = 0;
     private List<NotificationDto>? notifications;
+    private string username = "";
+   
 
     protected override async Task OnInitializedAsync()
     {
-        await AuthState.InitializeAsync(); // ✅ Wait for token to load first
+        await AuthState.InitializeAsync();
 
         AuthState.OnChange += HandleAuthChanged;
+        PostService.OnUserProfileChanged += RefreshUserInfo; // ✅ ADD
+
         isLoggedIn = AuthState.IsLoggedIn();
 
         if (isLoggedIn)
+        {
+            await LoadUserInfo();
             await LoadNotifications();
+        }
+    }
+
+    private void RefreshUserInfo()
+    {
+        InvokeAsync(async () =>
+        {
+            await LoadUserInfo();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadUserInfo()
+    {
+        try
+        {
+            var token = await AuthState.GetToken();
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/User/profile");
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await response.Content.ReadFromJsonAsync<UserInfoDto>();
+                username = user?.Username ?? "";
+            }
+        }
+        catch { }
+    }
+    public class UserInfoDto
+    {
+        public string Username { get; set; } = "";
+    }
+
+    private string GetUserInitial()
+    {
+        return !string.IsNullOrWhiteSpace(username)
+            ? username[0].ToString().ToUpper()
+            : "?";
     }
 
     private async Task GoToCreatePost()
@@ -332,7 +395,8 @@
     public void Dispose()
     {
         AuthState.OnChange -= HandleAuthChanged;
-    }       
+        PostService.OnUserProfileChanged -= RefreshUserInfo; // ✅ ADD
+    }
 
     public class NotificationDto
     {

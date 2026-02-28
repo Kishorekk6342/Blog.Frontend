@@ -6,19 +6,28 @@
 
 <MudCard Elevation="0"
          Class="post-card pa-4"
-         Style="border-radius:10px;
-                min-height:190px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.08);
-                transition:0.2s;">
+         Style="
+            border-radius:12px;
+            min-height:200px;
+            background:white;
+            box-shadow:0 4px 16px rgba(0,0,0,0.12);
+            transition:all 0.25s ease;
+         ">
 
-    <MudGrid GutterSize="3">
+
+    <MudGrid GutterSize="4">
 
         <!-- LEFT IMAGE -->
         <MudItem xs="12" sm="4">
             @if (!string.IsNullOrEmpty(Post.ImageUrl))
             {
                 <MudImage Src="@Post.ImageUrl"
-                          Style="width:100%; height:170px; object-fit:cover; border-radius:8px;" />
+                          Style="
+                width:100%;
+                height:170px;
+                object-fit:cover;
+                border-radius:10px;
+              " />
             }
         </MudItem>
 
@@ -27,7 +36,7 @@
                  Style="display:flex; flex-direction:column; height:100%;">
 
             <!-- 🔥 CONTENT BLOCK WITH SPACING -->
-            <MudStack Spacing="1">
+            <MudStack Spacing="4">
 
                 <!-- TITLE -->
                 <MudText Typo="Typo.h6" Style="font-weight:600;">
@@ -47,7 +56,7 @@
             </MudStack>
 
             <!-- 🔥 PUSH ACTIONS TO BOTTOM -->
-            <div style="margin-top:auto; padding-top:12px;">
+            <div style="margin-top:auto; padding-top:16px; padding-bottom:0px; margin-top:1px">
 
                 <MudStack Row="true"
                           AlignItems="AlignItems.Center"
@@ -68,7 +77,7 @@
                         <!-- LIKE -->
                         <MudStack Row="true"
                                   AlignItems="AlignItems.Center"
-                                  Spacing="1">
+                                  Spacing="2">
 
                             <MudIconButton Size="Size.Small"
                                            Icon="@(Post.IsLiked ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"

@@ -37,6 +37,13 @@ a, .btn-link {
     transform: translateY(-2px);
 }
 
+.post-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+}
+body {
+    background-color: #f5f7fb;
+}
 .post-card {
     position: relative;
 }

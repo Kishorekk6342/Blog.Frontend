@@ -10,7 +10,12 @@ namespace Blog.Frontend.Services
         private readonly HttpClient _http;
         public event Action? OnPostChanged; // 🔥 ADD THIS
 
+        public event Action? OnUserProfileChanged;
 
+        public void NotifyUserProfileChanged()
+        {
+            OnUserProfileChanged?.Invoke();
+        }
         public PostService(HttpClient http)
         {
             _http = http;

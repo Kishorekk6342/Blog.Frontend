@@ -4,98 +4,184 @@
 @inject AuthStateService AuthState
 @inject ISnackbar Snackbar
 
-<MudDialog>
-    <DialogContent>
+<MudDialog MaxWidth="MaxWidth.Large" FullWidth="true">
 
-        <!-- 🔹 AUTHOR + DATE -->
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
-            By <b>@Post.Username</b> · @Post.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")
-        </MudText>
-
-        <MudDivider Class="mb-3" />
-
-        <!-- 🔹 IMAGE -->
-        @if (!string.IsNullOrEmpty(Post.ImageUrl))
-        {
-            <MudImage Src="@($"{Post.ImageUrl}?v={DateTime.UtcNow.Ticks}")"
-                      Style="width:100%; max-height:400px; object-fit:contain; border-radius:8px;"
-                      Class="mb-3" />
-        }
-
-        <!-- 🔹 CONTENT -->
-        <MudText Typo="Typo.body1" Style="white-space:pre-wrap;">
-            @Post.Content
-        </MudText>
-
-        <!-- 🔥 COMMENTS SECTION -->
-        <MudDivider Class="my-4" />
-
-        <MudText Typo="Typo.h6">Comments</MudText>
-
-        <!-- ✏️ ADD COMMENT -->
-        <MudStack Row="true" Spacing="2" Class="mt-2">
-            <MudTextField @bind-Value="newComment"
-                          Placeholder="Write a comment..."
-                          Variant="Variant.Outlined"
-                          FullWidth="true" />
-
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="AddComment">
-                Post
-            </MudButton>
-        </MudStack>
-
-        <!-- 📜 COMMENT LIST -->
-        <MudStack Class="mt-3" Spacing="2">
-
-            @if (comments == null)
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h6" Style="font-weight:600; font-size:1rem;">
+                @Post.Title
+            </MudText>
+            @if (showComments)
             {
-                <MudProgressCircular Indeterminate="true" />
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                               Size="Size.Small"
+                               OnClick="ToggleComments"
+                               Title="Hide comments" />
             }
-            else if (!comments.Any())
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <div style="min-width:min(900px, 90vw); padding:8px 16px 16px;">
+
+            @if (!showComments)
             {
-                <MudText Color="Color.Secondary">No comments yet</MudText>
+                <!-- SINGLE COLUMN VIEW -->
+                <MudStack Spacing="2">
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        By <b>@Post.Username</b> · @Post.CreatedAt.ToString("dd MMM yyyy")
+                    </MudText>
+
+                    @if (!string.IsNullOrEmpty(Post.ImageUrl))
+                    {
+                        <MudImage Src="@Post.ImageUrl"
+                                  Style="width:100%; max-height:320px; object-fit:cover; border-radius:10px;" />
+                    }
+
+                    <MudText Typo="Typo.body1" Style="line-height:1.7; color:#333;">
+                        @Post.Content
+                    </MudText>
+
+                    <!-- COMMENT INPUT BAR -->
+                    <div style="border:1px solid #e0e0e0; border-radius:12px; padding:10px 14px; margin-top:8px; background:#fafafa;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudTextField @bind-Value="newComment"
+                                          Placeholder="Write a comment..."
+                                          Variant="Variant.Text"
+                                          DisableUnderLine="true"
+                                          Style="flex:1; font-size:0.9rem;" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Send"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="AddComment"
+                                           Disabled="@string.IsNullOrWhiteSpace(newComment)" />
+                            <MudDivider Vertical="true" Style="height:20px; margin:0 4px;" />
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Style="text-transform:none; white-space:nowrap; font-size:0.85rem;"
+                                       StartIcon="@Icons.Material.Outlined.ChatBubbleOutline"
+                                       OnClick="ToggleComments">
+                                @(comments == null ? "Comments" : $"{comments.Count} Comments")
+                            </MudButton>
+                        </MudStack>
+                    </div>
+
+                </MudStack>
             }
             else
             {
-                @foreach (var c in comments)
-                {
-                    <MudPaper Class="pa-3 d-flex justify-space-between align-start">
+                <!-- SPLIT VIEW -->
+                <MudGrid Spacing="3">
 
-                        <div>
-                            <MudText Typo="Typo.body2">
-                                <b>@c.Username</b>
-                            </MudText>
-
-                            <MudText Typo="Typo.body2">
-                                @c.Content
-                            </MudText>
+                    <!-- LEFT: POST CONTENT -->
+                    <MudItem xs="12" md="7">
+                        <MudStack Spacing="2">
 
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                @c.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                                By <b>@Post.Username</b> · @Post.CreatedAt.ToString("dd MMM yyyy")
                             </MudText>
-                        </div>
 
-                        <!-- 🗑 DELETE (ONLY OWNER) -->
-                        @if (c.UserId == currentUserId)
-                        {
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                            @if (!string.IsNullOrEmpty(Post.ImageUrl))
+                            {
+                                <MudImage Src="@Post.ImageUrl"
+                                          Style="width:100%; max-height:260px; object-fit:cover; border-radius:10px;" />
+                            }
+
+                            <MudText Typo="Typo.body1" Style="line-height:1.7; color:#333;">
+                                @Post.Content
+                            </MudText>
+
+                        </MudStack>
+                    </MudItem>
+
+                    <!-- RIGHT: COMMENTS PANEL -->
+                    <MudItem xs="12" md="5">
+                        <div style="display:flex; flex-direction:column; height:100%; min-height:320px; border-left:1px solid #eeeeee; padding-left:16px;">
+
+                            <!-- HEADER -->
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="margin-bottom:10px;">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600; letter-spacing:0.02em;">
+                                    @(comments == null ? "Comments" : $"Comments ({comments.Count})")
+                                </MudText>
+                                <MudButton Variant="Variant.Text"
                                            Color="Color.Error"
-                                           OnClick="() => DeleteComment(c.Id)" />
-                        }
+                                           Size="Size.Small"
+                                           Style="text-transform:none; min-width:0;"
+                                           OnClick="ToggleComments">
+                                    Hide
+                                </MudButton>
+                            </MudStack>
 
-                    </MudPaper>
-                }
+                            <!-- SCROLLABLE COMMENTS LIST — fixed height, no card growth -->
+                            <div style="flex:1; overflow-y:auto; max-height:300px; padding-right:4px; margin-bottom:10px;">
+                                @if (comments == null)
+                                {
+                                    <MudStack AlignItems="AlignItems.Center" Style="padding:24px 0;">
+                                        <MudProgressCircular Indeterminate Size="Size.Small" />
+                                    </MudStack>
+                                }
+                                else if (!comments.Any())
+                                {
+                                    <MudStack AlignItems="AlignItems.Center" Style="padding:32px 0;">
+                                        <MudIcon Icon="@Icons.Material.Outlined.ChatBubbleOutline"
+                                                 Style="font-size:2rem; color:#bdbdbd;" />
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            No comments yet. Be first!
+                                        </MudText>
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    @foreach (var c in comments)
+                                    {
+                                        <div style="padding:8px 10px; border-radius:8px; margin-bottom:6px; background:#f5f5f5;">
+                                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                                <MudAvatar Style="width:26px; height:26px; font-size:0.7rem; background:#1976d2; color:white;">
+                                                    @c.Username.Substring(0, 1).ToUpper()
+                                                </MudAvatar>
+                                                <MudText Typo="Typo.caption" Style="font-weight:600; color:#424242;">
+                                                    @c.Username
+                                                </MudText>
+                                            </MudStack>
+                                            <MudText Typo="Typo.body2" Style="margin-top:4px; color:#555; padding-left:2px;">
+                                                @c.Content
+                                            </MudText>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <!-- INPUT -->
+                            <div style="border:1px solid #e0e0e0; border-radius:10px; padding:8px 12px; background:#fafafa;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudTextField @bind-Value="newComment"
+                                                  Placeholder="Write a comment..."
+                                                  Variant="Variant.Text"
+                                                  DisableUnderLine="true"
+                                                  Style="flex:1; font-size:0.875rem;" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Send"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="AddComment"
+                                                   Disabled="@string.IsNullOrWhiteSpace(newComment)" />
+                                </MudStack>
+                            </div>
+
+                        </div>
+                    </MudItem>
+
+                </MudGrid>
             }
 
-        </MudStack>
-
+        </div>
     </DialogContent>
 
     <DialogActions>
-        <MudButton OnClick="Close">Close</MudButton>
+        <MudButton OnClick="Close" Variant="Variant.Text">Close</MudButton>
     </DialogActions>
+
 </MudDialog>
 
 @code {
@@ -105,12 +191,21 @@
     private List<CommentDto>? comments;
     private string newComment = "";
     private Guid currentUserId;
+    private bool showComments = false;
+
+    private async void ToggleComments()
+    {
+        showComments = !showComments;
+        if (showComments && comments == null)
+            await LoadComments();
+    }
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            currentUserId = await AuthState.GetUserId(); // your helper
+            currentUserId = await AuthState.GetUserId();
+            // Pre-load comment count without opening panel
             await LoadComments();
         }
         catch { }
@@ -152,6 +247,9 @@
             {
                 newComment = "";
                 await LoadComments();
+                // Auto-open comments panel after posting
+                if (!showComments) showComments = true;
+                StateHasChanged();
             }
             else
             {
@@ -164,33 +262,5 @@
         }
     }
 
-    private async Task DeleteComment(Guid commentId)
-    {
-        try
-        {
-            var token = await AuthState.GetToken();
-
-            var request = new HttpRequestMessage(
-                HttpMethod.Delete, $"api/Post/comment/{commentId}");
-
-            request.Headers.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            var res = await Http.SendAsync(request);
-
-            if (res.IsSuccessStatusCode)
-            {
-                await LoadComments();
-            }
-            else
-            {
-                Snackbar.Add("Failed to delete comment", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
     void Close() => MudDialog.Close();
 }

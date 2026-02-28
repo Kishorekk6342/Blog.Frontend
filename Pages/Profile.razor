@@ -14,10 +14,46 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     @if (isLoading)
     {
-        <MudStack AlignItems="AlignItems.Center" Class="mt-8">
-            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-            <MudText>Loading profile...</MudText>
-        </MudStack>
+        <MudPaper Class="pa-6 mb-4">
+
+            <MudGrid>
+
+                <!-- Avatar -->
+                <MudItem xs="12" md="4" Class="d-flex justify-center">
+                    <MudSkeleton Width="150px" Height="150px" Animation="Animation.Wave" />
+                </MudItem>
+
+                <!-- Profile Info -->
+                <MudItem xs="12" md="8">
+                    <MudStack Spacing="2">
+
+                        <MudSkeleton Width="200px" Height="30px" Animation="Animation.Wave" />
+
+                        <MudStack Row="true" Spacing="4">
+                            <MudSkeleton Width="60px" Height="20px" />
+                            <MudSkeleton Width="60px" Height="20px" />
+                            <MudSkeleton Width="60px" Height="20px" />
+                        </MudStack>
+
+                        <MudSkeleton Width="100%" Height="20px" />
+                        <MudSkeleton Width="80%" Height="20px" />
+
+                    </MudStack>
+                </MudItem>
+
+            </MudGrid>
+
+        </MudPaper>
+
+        <!-- POSTS SKELETON -->
+        <MudGrid>
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton Height="220px" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        </MudGrid>
     }
     else if (userProfile != null)
     {
@@ -133,8 +169,7 @@
                                     else
                                     {
                                         <MudButton Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   Size="Size.Small"
+                                                   Style="background:#616161; color:white;" Size="Size.Small"
                                                    Disabled="isFollowLoading"
                                                    OnClick="ToggleFollow">
                                             Follow
@@ -218,7 +253,7 @@
                     <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
                         <MudButton Variant="Variant.Text" OnClick="CloseEditDialog">Cancel</MudButton>
                         <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
+                                   Style="background:#616161; color:white;"
                                    OnClick="SaveProfile"
                                    Disabled="isSaving">
                             @if (isSaving)
@@ -260,7 +295,7 @@
                 @if (isOwnProfile)
                 {
                     <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
+                               Style="background:#616161; color:white;"
                                StartIcon="@Icons.Material.Filled.Add"
                                OnClick="OpenCreatePostDialog"
                                Size="Size.Small">
@@ -277,7 +312,7 @@
                     @if (isOwnProfile)
                     {
                         <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
+                                   Style="background:#616161; color:white;"
                                    OnClick="OpenCreatePostDialog">
                             Create your first post
                         </MudButton>
@@ -385,7 +420,7 @@
 
 
     
-
+    
     private async Task LoadProfile()
     {
         isLoading = true;
@@ -429,7 +464,7 @@
             if (!isOwnProfile && UserId.HasValue)
                 await CheckFollowStatus();
 
-            bool canSeePosts = isOwnProfile || !userProfile.PrivateProfile || isFollowing;
+            bool canSeePosts = isOwnProfile || isFollowing;
 
             if (canSeePosts)
             {
@@ -536,6 +571,7 @@
                 }
                 else
                 {
+
                     followRequestPending = result?.IsPending ?? false;
                 }
             }
@@ -585,14 +621,23 @@
             {
                 var req = await CreateRequest(HttpMethod.Delete, $"api/Follow/{UserId}");
                 var res = await Http.SendAsync(req);
+
                 if (res.IsSuccessStatusCode)
                 {
                     isFollowing = false;
                     followRequestPending = false;
-                    if (userProfile != null) userProfile.FollowerCount--;
-                    await LoadUserPosts();
+
+                    if (userProfile != null)
+                        userProfile.FollowerCount--;
+
+                    // 🔥 FIX 1: CLEAR POSTS IMMEDIATELY
+                    userPosts = new List<PostDto>();
+
                     Snackbar.Add("Unfollowed", Severity.Success);
-                    StateHasChanged();
+
+                    StateHasChanged(); // 🔥 FORCE UI UPDATE
+
+                    return; // 🔥 IMPORTANT → stop here (don't reload posts)
                 }
             }
             else if (!followRequestPending)
@@ -731,6 +776,8 @@
                 {
                     userProfile.ProfilePictureUrl = currentImageUrl;
                 }
+                PostService.NotifyUserProfileChanged(); // ✅ ADD HERE
+
                 selectedImageBytes = null;
                 showEditDialog = false;
                 Snackbar.Add("Profile picture updated", Severity.Success);
@@ -881,6 +928,7 @@
             if (response.IsSuccessStatusCode)
             {
                 Snackbar.Add("Profile updated successfully!", Severity.Success);
+                PostService.NotifyUserProfileChanged(); // ✅ ADD THIS
                 CloseEditDialog();
                 await LoadProfile();
             }
