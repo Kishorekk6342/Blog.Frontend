@@ -5,7 +5,7 @@
 @inject ISnackbar Snackbar
 @implements IDisposable
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     <MudDivider Class="mb-4" />
     @if (loading)
     {
@@ -21,7 +21,7 @@
     }
     else
     {
-        <MudStack Spacing="3">
+        <MudStack Spacing="3" Class="mt-2">
             @foreach (var post in posts)
             {
                 <PostCard @key="post.Id" Post="post" />

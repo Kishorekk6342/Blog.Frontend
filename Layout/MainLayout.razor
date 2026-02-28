@@ -9,8 +9,7 @@
 
 <MudLayout>
 
-    <MudAppBar Elevation="1" Color="Color.Primary">
-
+    <MudAppBar Elevation="1" Style="background-color:#616161; color:white;">
         @if (isLoggedIn)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
@@ -30,7 +29,7 @@
         @if (isLoggedIn)
         {
             <MudButton Variant="Variant.Filled"
-                       Color="Color.Secondary"
+                       Style="background-color:white; color:#424242;"
                        StartIcon="@Icons.Material.Filled.Add"
                        Class="mr-2"
                        OnClick="GoToCreatePost">

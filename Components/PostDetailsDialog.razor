@@ -136,9 +136,17 @@
 
         try
         {
-            var res = await Http.PostAsJsonAsync(
-                $"api/Post/comment/{Post.Id}",
-                newComment);
+            var token = await AuthState.GetToken();
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Post, $"api/Post/comment/{Post.Id}");
+
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            request.Content = JsonContent.Create(newComment);
+
+            var res = await Http.SendAsync(request);
 
             if (res.IsSuccessStatusCode)
             {
@@ -160,11 +168,23 @@
     {
         try
         {
-            var res = await Http.DeleteAsync($"api/Post/comment/{commentId}");
+            var token = await AuthState.GetToken();
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Delete, $"api/Post/comment/{commentId}");
+
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var res = await Http.SendAsync(request);
 
             if (res.IsSuccessStatusCode)
             {
                 await LoadComments();
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete comment", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -172,6 +192,5 @@
             Snackbar.Add(ex.Message, Severity.Error);
         }
     }
-
     void Close() => MudDialog.Close();
 }
