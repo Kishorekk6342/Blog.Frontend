@@ -464,8 +464,9 @@
             if (!isOwnProfile && UserId.HasValue)
                 await CheckFollowStatus();
 
-            bool canSeePosts = isOwnProfile || isFollowing;
-
+            bool canSeePosts = isOwnProfile
+                || isFollowing
+                || (userProfile != null && !userProfile.PrivateProfile);
             if (canSeePosts)
             {
                 var postsEndpoint = isOwnProfile
@@ -497,11 +498,19 @@
 
     }
     protected override async Task OnInitializedAsync()
-{
-    PostService.OnPostChanged += OnPostChanged;
+    {
+        PostService.OnPostChanged += OnPostChanged;
 
-    await LoadProfile(); // 🔥 IMPORTANT
-}
+        await AuthState.InitializeAsync(); // ✅ IMPORTANT
+
+        if (!AuthState.IsLoggedIn())
+        {
+            Navigation.NavigateTo("/login", replace: true); // ✅ NO BACK
+            return;
+        }
+
+        await LoadProfile();
+    }
 
     private void OnPostChanged()
     {
@@ -634,6 +643,8 @@
                     userPosts = new List<PostDto>();
 
                     Snackbar.Add("Unfollowed", Severity.Success);
+                    await LoadUserPosts();
+
 
                     StateHasChanged(); // 🔥 FORCE UI UPDATE
 
@@ -978,6 +989,14 @@
     {
         if (userProfile == null) return;
 
+        // ✅ BLOCK ONLY PRIVATE + NOT FOLLOWING
+        if (!isOwnProfile && !isFollowing && userProfile.PrivateProfile)
+        {
+            userPosts = new List<PostDto>();
+            StateHasChanged();
+            return;
+        }
+
         var postsEndpoint = isOwnProfile
             ? "api/Post/my-posts"
             : $"api/Post/user/{userProfile.Id}";
@@ -989,7 +1008,12 @@
         {
             var newPosts = await response.Content.ReadFromJsonAsync<List<PostDto>>() ?? new();
 
-            // ✅ REPLACE AFTER DATA ARRIVES (no flicker)
+            // ✅ OPTIONAL: filter public posts if not following
+            if (!isFollowing && !isOwnProfile)
+            {
+                newPosts = newPosts.Where(p => p.IsPublic).ToList();
+            }
+
             userPosts = newPosts;
         }
 

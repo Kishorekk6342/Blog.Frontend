@@ -193,6 +193,8 @@
         {
             var token = await AuthState.GetToken();
 
+            if (string.IsNullOrEmpty(token)) return; // ✅ ADD
+
             var request = new HttpRequestMessage(HttpMethod.Get, "api/User/profile");
             request.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -206,6 +208,8 @@
             }
         }
         catch { }
+
+        StateHasChanged(); // ✅ ensure UI refresh
     }
     public class UserInfoDto
     {
@@ -276,11 +280,14 @@
         isLoggedIn = AuthState.IsLoggedIn();
 
         if (isLoggedIn)
+        {
+            _ = LoadUserInfo();      // ✅ ADD THIS (IMPORTANT)
             _ = LoadNotifications();
+        }
         else
         {
-            // ✅ Redirect to login and replace history so back button won't work
-            Navigation.NavigateTo("/login", replace: true);
+            username = ""; // ✅ clear old username
+            Navigation.NavigateTo("/login", replace: true); // ✅ fix flicker
         }
 
         InvokeAsync(StateHasChanged);
