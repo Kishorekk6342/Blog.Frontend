@@ -9,8 +9,11 @@
 
 <MudLayout>
 
-    <MudAppBar Elevation="1" Style="background-color:#616161; color:white;">
-        @if (isLoggedIn)
+    <MudAppBar Elevation="1"
+               Style="background-color:#616161; color:white;"
+               Class="px-2">
+   
+               @if (isLoggedIn)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
@@ -20,7 +23,9 @@
 
         <MudSpacer />  @* ✅ Spacer BEFORE title centers it *@
 
-        <MudText Typo="Typo.h6" Class="flex-grow-1" Align="Align.Center">
+        <MudText Typo="Typo.subtitle1"
+                 Class="flex-grow-1 text-truncate"
+                 Align="Align.Center">
             Blog App
         </MudText>
 
@@ -28,28 +33,44 @@
 
         @if (isLoggedIn)
         {
-            <MudButton Variant="Variant.Filled"
-                       Style="background-color:white; color:#424242;"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Class="mr-3"
-                       OnClick="GoToCreatePost">
-                Write Blog
-            </MudButton>
+            <!-- Desktop -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color:white; color:#424242;"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Class="mr-4"
+                           OnClick="GoToCreatePost">
+                    Write Blog
+                </MudButton>
+            </MudHidden>
 
-            <MudStack Row="true"
-                      AlignItems="AlignItems.Center"
-                      Spacing="2"
-                      Class="mx-3">
+            <!-- Mobile -->
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                <MudIconButton Icon="@Icons.Material.Filled.Add"
+                               Color="Color.Inherit"
+                               OnClick="GoToCreatePost" />
+            </MudHidden>
 
-                <MudAvatar Size="Size.Small" Style="background:#9e9e9e; color:white;">
+            <!-- Desktop -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudStack Row="true"
+                          AlignItems="AlignItems.Center"
+                          Spacing="2"
+                          Class="mx-3">
+
+                    <MudAvatar Size="Size.Small">@GetUserInitial()</MudAvatar>
+
+                    <MudText Typo="Typo.body2">@username</MudText>
+
+                </MudStack>
+            </MudHidden>
+
+            <!-- Mobile -->
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                <MudAvatar Size="Size.Small" Class="mx-2">
                     @GetUserInitial()
                 </MudAvatar>
-
-                <MudText Typo="Typo.body2" Style="font-weight:500;">
-                    @username
-                </MudText>
-
-            </MudStack>
+            </MudHidden>
 
             <MudMenu AnchorOrigin="Origin.BottomRight"
                      TransformOrigin="Origin.TopRight"
@@ -61,7 +82,9 @@
                               Visible="@(notificationCount > 0)"
                               Color="Color.Error"
                               Overlap="true">
+                        
                         <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                                       Size="Size.Small"
                                        Color="Color.Inherit"
                                        OnClick="@OnNotificationClicked" />
                     </MudBadge>
@@ -134,16 +157,34 @@
 
     @if (isLoggedIn)
     {
-        <MudDrawer @bind-Open="drawerOpen"
-                   Variant="DrawerVariant.Mini"
-                   MiniWidth="56px"
-                   Width="220px"
-                   Elevation="2"
-                   ClipMode="DrawerClipMode.Never">
+        <!-- 💻 Desktop (Mini Drawer) -->
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudDrawer @bind-Open="drawerOpen"
+                       Variant="DrawerVariant.Mini"
+                       MiniWidth="70px"
+                       Width="200px"
+                       Elevation="2">
 
-            <NavMenu DrawerOpen="drawerOpen" />
+                <NavMenu DrawerOpen="drawerOpen"
+                         />
 
-        </MudDrawer>
+            </MudDrawer>
+        </MudHidden>
+
+        <!-- 📱 Mobile (Temporary Drawer) -->
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudDrawer @bind-Open="drawerOpen"
+                       Variant="DrawerVariant.Temporary"
+                       Width="220px"
+                       Elevation="2">
+
+                <NavMenu DrawerOpen="true" />
+
+               
+            </MudDrawer>
+        </MudHidden>
+
+           
     }
 
     <MudMainContent>

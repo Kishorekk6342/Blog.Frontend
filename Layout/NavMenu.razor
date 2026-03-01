@@ -10,7 +10,7 @@
     <!-- CENTER MENU -->
     <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
         <MudNavMenu Dense="true">
-
+            
             <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">
                 @if (DrawerOpen)
                 {
@@ -64,4 +64,10 @@
         await AuthState.Logout();
         Navigation.NavigateTo("/login", replace: true);
 }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task CloseDrawer()
+    {
+        await OnClose.InvokeAsync();
+    }
 }
