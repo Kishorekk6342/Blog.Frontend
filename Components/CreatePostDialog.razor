@@ -19,11 +19,32 @@
                           FullWidth="true" />
 
             <!-- CONTENT -->
-            <MudTextField @bind-Value="Model.Content"
-                          Label="Write your story..."
-                          Variant="Variant.Outlined"
-                          Lines="8"
-                          FullWidth="true" />
+            <MudStack Spacing="1">
+
+                <MudTextField @bind-Value="Model.Content"
+                              Label="Write your story..."
+                              Variant="Variant.Outlined"
+                              Lines="8"
+                              FullWidth="true" />
+
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           OnClick="GenerateWithAI"
+                           Disabled="isGenerating">
+
+                    @if (isGenerating)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <text>Generating...</text>
+                    }
+                    else
+                    {
+                        <text> Write with AI</text>
+                    }
+
+                </MudButton>
+
+            </MudStack>
 
             <!-- IMAGE (OPTIONAL) -->
             <MudPaper Class="pa-4" Style="border:2px dashed #ddd; border-radius:12px;">
@@ -89,6 +110,58 @@
     private IBrowserFile? file;
     private string? ImagePreview;
     private bool isSubmitting = false;
+    private bool isGenerating = false;
+
+    private async Task GenerateWithAI()
+    {
+        if (string.IsNullOrWhiteSpace(Model.Title))
+        {
+            Snackbar.Add("Please enter a title first", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            isGenerating = true;
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "api/Post/generate-content"
+            );
+
+            request.Content = JsonContent.Create(Model.Title);
+
+            var token = await AuthState.GetToken();
+
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var response = await Http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("AI generation failed", Severity.Error);
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<AiResult>();
+
+            Model.Content = result?.Content ?? "";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    public class AiResult
+    {
+        public string? Content { get; set; }
+    }
 
     private async Task OnImageSelected(InputFileChangeEventArgs e)
     {

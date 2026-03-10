@@ -7,6 +7,7 @@
 @inject ISnackbar Snackbar
 @inject PostService PostService
 
+
 <MudLayout>
 
     <MudAppBar Elevation="1"
@@ -208,9 +209,10 @@
         await AuthState.InitializeAsync();
 
         AuthState.OnChange += HandleAuthChanged;
-        PostService.OnUserProfileChanged += RefreshUserInfo; // ✅ ADD
+        PostService.OnUserProfileChanged += RefreshUserInfo;
 
-        isLoggedIn = AuthState.IsLoggedIn();
+        var token = await AuthState.GetToken();
+        isLoggedIn = !string.IsNullOrWhiteSpace(token);
 
         if (isLoggedIn)
         {
@@ -316,22 +318,23 @@
         catch { }
     }
 
-    private void HandleAuthChanged()
+    private async void HandleAuthChanged()
     {
-        isLoggedIn = AuthState.IsLoggedIn();
+        var token = await AuthState.GetToken();
+        isLoggedIn = !string.IsNullOrWhiteSpace(token);
 
         if (isLoggedIn)
         {
-            _ = LoadUserInfo();      // ✅ ADD THIS (IMPORTANT)
-            _ = LoadNotifications();
+            await LoadUserInfo();
+            await LoadNotifications();
         }
         else
         {
-            username = ""; // ✅ clear old username
-            Navigation.NavigateTo("/login", replace: true); // ✅ fix flicker
+            username = "";
+            Navigation.NavigateTo("/login", replace: true);
         }
 
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnNotificationMenuChanged(bool open)

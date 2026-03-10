@@ -1,4 +1,6 @@
-﻿<MudThemeProvider />
+﻿@inject Blog.Frontend.Services.AuthStateService AuthState
+
+<MudThemeProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <MudPopoverProvider />
@@ -15,3 +17,10 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+    }
+}

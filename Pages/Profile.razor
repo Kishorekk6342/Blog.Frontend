@@ -510,15 +510,18 @@
         }
 
     }
+   
     protected override async Task OnInitializedAsync()
     {
         PostService.OnPostChanged += OnPostChanged;
 
-        await AuthState.InitializeAsync(); // ✅ IMPORTANT
+        await AuthState.InitializeAsync();
 
-        if (!AuthState.IsLoggedIn())
+        var token = await AuthState.GetToken();
+
+        if (string.IsNullOrWhiteSpace(token))
         {
-            Navigation.NavigateTo("/login", replace: true); // ✅ NO BACK
+            Navigation.NavigateTo("/login", replace: true);
             return;
         }
 
